@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "fsde": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "/Users/nassertowfigh/Projects/FSDE/src/Fsde.McpServer/Fsde.McpServer.csproj",
+        "-c",
+        "Release",
+        "--no-build"
+      ],
+      "env": {
+        "FSDE_MCP_PROFILE": "claude-code"
+      }
+    }
+  }
+}

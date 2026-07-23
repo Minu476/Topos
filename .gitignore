@@ -1,0 +1,40 @@
+# Topos — .gitignore
+# Standard C# / .NET ignores (anticipating M0 code) + OS noise
+
+## Build results
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+
+## .NET / NuGet
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# NuGet packages
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## Visual Studio / Rider / VS Code (keep editor-agnostic; individuals can override)
+.vs/
+.idea/
+*.DotSettings.user
+
+## OS noise
+.DS_Store
+Thumbs.db
+
+## BenchmarkDotNet results (anticipated for M0 measured-benchmark gate)
+BenchmarkDotNet.Artifacts/
+*-report.html
+*-report.csv
+*-report-grep.md
