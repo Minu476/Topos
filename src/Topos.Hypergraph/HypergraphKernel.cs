@@ -7,32 +7,34 @@ namespace Topos.Hypergraph;
 /// M0 storage kernel: Handle allocation, the vertex table, incidence storage, and typed property
 /// pools — the four primitives and two invariants of spec §3.
 ///
-/// Concurrency model (spec §3.4, Single-Writer/Multi-Reader at the kernel boundary):
+/// Concurrency model (spec §3.4, Single-Writer/Multi-Reader at the kernel boundary) — revised
+/// 2026-07-24 after benchmark data, see <c>docs/M0_BENCHMARK_RESULTS_2026-07-24.md</c>:
 /// <list type="bullet">
 /// <item>Handle allocation is genuinely lock-free (<see cref="HandleAllocator"/>,
 /// <c>Interlocked.Increment</c>).</item>
-/// <item>Incidence indexes are genuinely lock-free for readers: each update copies-on-write into
-/// a new <see cref="ImmutableArray{T}"/> via <see cref="ConcurrentDictionary{TKey,TValue}"/>, so
-/// a reader always sees a complete, consistent snapshot without taking a lock.</item>
-/// <item>The vertex table and every property pool are each one <see cref="PropertyPool{T}"/> —
-/// a <see cref="SparseSet{T}"/> behind its own <see cref="ReaderWriterLockSlim"/>. This is the
-/// "per-pool, not global" granularity: concurrent access to different pools never contends.</item>
+/// <item><b>Every other piece of state — the vertex table, the incidence indexes, and every
+/// property pool — is one <see cref="SparseSet{T}"/> behind its own
+/// <see cref="ReaderWriterLockSlim"/></b> (<see cref="PropertyPool{T}"/> for vertices/properties,
+/// <see cref="IncidenceIndex"/> for incidences). This is a change from the original design, which
+/// used copy-on-write <see cref="ImmutableArray{T}"/> for incidences specifically, chasing
+/// lock-free reads. Measured cost of that choice: 5–6× slower than a naive
+/// <c>Dictionary&lt;Handle,List&lt;Handle&gt;&gt;</c> even in the benign case, and O(N²) —
+/// literally thousands of times slower — for a hub vertex accumulating many members. RWLS reads
+/// are cheap enough uncontended that the lock-free property wasn't worth what it cost. One
+/// concurrency pattern for the whole kernel now, not two.</item>
 /// </list>
 ///
 /// <b>Write methods assume a single-writer thread</b>, per the SWMR model — concurrent calls to
 /// write methods (<see cref="CreateVertex"/>, <see cref="SetDormant"/>, <see cref="SetProperty{T}"/>,
-/// etc.) from multiple threads are not a supported configuration without external synchronization
-/// (the incidence-index writes are the one exception: they're safe under concurrent writers too,
-/// since <see cref="ConcurrentDictionary{TKey,TValue}.AddOrUpdate(TKey,System.Func{TKey,TValue},System.Func{TKey,TValue,TValue})"/>
-/// is inherently CAS-safe). Read methods are always safe to call concurrently with the single
-/// writer.
+/// etc.) from multiple threads are not a supported configuration without external synchronization.
+/// Read methods are always safe to call concurrently with the single writer.
 /// </summary>
-public sealed class HypergraphKernel
+public sealed class HypergraphKernel : IHypergraphQuery
 {
     private readonly HandleAllocator _allocator = new();
     private readonly PropertyPool<Vertex> _vertices = new();
-    private readonly ConcurrentDictionary<Handle, ImmutableArray<Incidence>> _bySource = new();
-    private readonly ConcurrentDictionary<Handle, ImmutableArray<Incidence>> _byMember = new();
+    private readonly IncidenceIndex _bySource = new();
+    private readonly IncidenceIndex _byMember = new();
     private readonly PropertyRegistry _properties = new();
     private readonly ConcurrentDictionary<int, object> _propertyPools = new();
 
@@ -46,6 +48,18 @@ public sealed class HypergraphKernel
     }
 
     public bool TryGetVertex(Handle handle, out Vertex vertex) => _vertices.TryGet(handle, out vertex);
+
+    // ── IHypergraphQuery primitives ─────────────────────────────────────────
+
+    public int CountVertices() => _vertices.Count;
+
+    public IReadOnlyList<Handle> VertexHandles() => _vertices.Handles;
+
+    public IReadOnlyList<Handle> GetVertexHyperedges(Handle vertex) =>
+        [.. IncidencesOf(vertex).Select(i => i.Source).Distinct()];
+
+    public IReadOnlyList<Incidence> GetHyperedgeVertices(Handle hyperedge) =>
+        IncidencesFrom(hyperedge);
 
     /// <summary>
     /// Tombstones a vertex (Invariant 1: dormant, never removed — this never calls
@@ -71,26 +85,16 @@ public sealed class HypergraphKernel
     public Incidence AddIncidence(Handle source, Handle member, byte role, int ordinal)
     {
         var incidence = new Incidence(source, member, role, ordinal);
-        Append(_bySource, source, incidence);
-        Append(_byMember, member, incidence);
+        _bySource.Append(source, incidence);
+        _byMember.Append(member, incidence);
         return incidence;
     }
 
-    public ImmutableArray<Incidence> IncidencesFrom(Handle source) =>
-        _bySource.TryGetValue(source, out var list) ? list : ImmutableArray<Incidence>.Empty;
+    /// <summary>Outgoing direction: every Incidence where <paramref name="source"/> is the edge/source side.</summary>
+    public ImmutableArray<Incidence> IncidencesFrom(Handle source) => _bySource.Get(source);
 
-    public ImmutableArray<Incidence> IncidencesOf(Handle member) =>
-        _byMember.TryGetValue(member, out var list) ? list : ImmutableArray<Incidence>.Empty;
-
-    private static void Append(
-        ConcurrentDictionary<Handle, ImmutableArray<Incidence>> index, Handle key, Incidence incidence)
-    {
-        index.AddOrUpdate(
-            key,
-            addValueFactory: static (_, inc) => ImmutableArray.Create(inc),
-            updateValueFactory: static (_, existing, inc) => existing.Add(inc),
-            factoryArgument: incidence);
-    }
+    /// <summary>Reverse direction: every Incidence where <paramref name="member"/> participates as a member — the index that makes "which hyperedges is this vertex part of" O(1) instead of a full scan.</summary>
+    public ImmutableArray<Incidence> IncidencesOf(Handle member) => _byMember.Get(member);
 
     // ── Properties ───────────────────────────────────────────────────────────
 

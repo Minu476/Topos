@@ -236,37 +236,55 @@ Incidence primitive's fields are *already* justified by these concerns (cell pro
 `IncidenceRole`, the mode flag lands in M2 anyway), and embeddings as `PropertyKey<float[]>`
 from day one costs nothing and forecloses nothing. **🟡 OPEN:** confirm "split it." See `§12`.
 
-### 3.4 Concurrency model (🔒 LOCKED)
+### 3.4 Concurrency model (🔒 LOCKED, amended 2026-07-24 — see correction below)
 
 > *Design note: M0's exit criterion requires thread-safety, but a concurrency model is
 > expensive to retrofit onto CSR + sparse-set pools after the fact — so it belongs in the
 > contract, not discovered during M0 implementation.*
+
+> **🔧 Correction (2026-07-24, measured during M0 implementation):** the original bullet below
+> called for copy-on-write (`ImmutableArray`-per-key) on the mutable tier for lock-free reads.
+> Built and benchmarked against a naive `Dictionary` baseline (spec's own M0 gate), that choice
+> measured **5–6× slower even in the benign case, and O(N²) — thousands of times slower — for a
+> hub vertex with many incident members** (55ms to build one 8,000-member hyperedge membership
+> set, against a 3.7ms total RLB step budget). Full data:
+> `docs/M0_BENCHMARK_RESULTS_2026-07-24.md`. Replaced with a `ReaderWriterLockSlim`-per-pool
+> design (uniform across vertices, properties, *and* incidences — see the corrected bullet
+> below), which benchmarked ~2.2–2.4× *faster* than naive for the vertex/property pattern and
+> eliminated the O(N²) incidence pathology. **This is exactly what the M0 benchmark gate is
+> for** — the contract's prior lean on COW was reasonable a priori, and wrong once measured;
+> the gate caught it before it became load-bearing.
 
 The first consumer (RLB logistics: 44 robots, ~270Hz `[verified:src=Rich-Learning-Base/INITIAL_README.md]`)
 is concurrent by nature. Topos commits to a concurrency model at the contract level so the
 storage layout is designed for it from M0:
 
 - **Access model: Single-Writer / Multi-Reader (SWMR) at the kernel boundary.** One mutator
-  thread owns writes; readers are lock-free. This matches yamafaktory's `PersistentHypergraph`
-  pattern (`AtomicU64` counters for lock-free `&self` writes
-  `[verified:src=yamafaktory/hypergraph disk/types.rs]`) and the `.NET`-idiomatic
-  `ConcurrentDictionary`-backed storage RLB already uses
-  (`_hyperedges: ConcurrentDictionary<...>` `[verified:src=RichLearning.V2/Memory/InMemoryGraphMemory.cs]`).
+  thread owns writes. Handle allocation is genuinely lock-free (`Interlocked.Increment`); all
+  other reads take a per-pool `ReaderWriterLockSlim` read lock — cheap and effectively
+  uncontended in the single-writer case, and measurably faster in practice than the
+  `ConcurrentDictionary`-based alternative this spec originally called for (see the correction
+  above). `[verified:src=docs/M0_BENCHMARK_RESULTS_2026-07-24.md §1]`
 - **Counter allocation: lock-free monotonic.** `Handle` generation uses `Interlocked.Increment`
   on a single counter — no lock contention on the hottest path (handle allocation during
   ingestion). `[verified:src=yamafaktory/hypergraph — AtomicU64 counter pattern]`
-- **Storage layout constraint: no reader-writer-locked inner loop.** CSR (frozen tiers) is
-  immutable post-construction → trivially parallel readers. Sparse-set property pools
-  (mutable tier) use copy-on-write pages so readers see a consistent snapshot without locks.
-- **Granularity: per-pool, not global.** Each `storage<T>` property pool has its own write
-  lock; writers on different pools don't contend. `[verified:src=EnTT registry.hpp — per-pool
-  design]`
+- **Storage layout: one pattern for every pool, not two.** Vertices, typed properties, *and*
+  incidence indexes are each a `SparseSet<T>` (or `SparseSet<List<Incidence>>` for incidences)
+  behind its own `ReaderWriterLockSlim`. Reads take an O(k) snapshot copy where needed (k =
+  current collection size) rather than paying a copy cost on every write — the right trade for
+  write-heavy accumulation, which the fan-in benchmark showed COW gets backwards.
+  `[verified:src=src/Topos.Hypergraph/PropertyPool.cs, IncidenceIndex.cs]`
+- **Granularity: per-pool, not global.** Each pool has its own lock; writers on different pools
+  don't contend. `[verified:src=EnTT registry.hpp — per-pool design, adapted to RWLS rather than
+  COW per the correction above]`
 - **🟡 OPEN (Q3b — sub-point of the M5 split):** the persistence tier (M4) introduces LSM
-  compaction, which relocates physical slots. The SWMR + copy-on-write pattern handles this,
-  but the exact compaction-vs-read-window protocol is an M4 design decision, not an M0 one.
+  compaction, which relocates physical slots. The per-pool-lock pattern handles this in
+  principle, but the exact compaction-vs-read-window protocol is an M4 design decision, not an
+  M0 one.
 
 **This locks the axes.** M0's exit criterion "thread-safe... passing a fuzz+concurrency suite"
-now has a concrete model to test against, not a blank page.
+now has a concrete model to test against, not a blank page — and that model has now been
+implemented and measured, not just proposed.
 
 ### 3.5 Handle generation-bits: not redundant, but the reason needs stating (🟡 OPEN — Q7)
 

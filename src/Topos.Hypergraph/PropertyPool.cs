@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Topos.Hypergraph;
 
 /// <summary>
@@ -39,6 +41,17 @@ internal sealed class PropertyPool<T>
         {
             _lock.EnterReadLock();
             try { return _values.Count; }
+            finally { _lock.ExitReadLock(); }
+        }
+    }
+
+    /// <summary>Snapshot of every Handle currently in the pool — used by <see cref="HypergraphKernel"/>'s <c>IHypergraphQuery.VertexHandles</c>.</summary>
+    public ImmutableArray<Handle> Handles
+    {
+        get
+        {
+            _lock.EnterReadLock();
+            try { return [.. _values.DenseHandles]; }
             finally { _lock.ExitReadLock(); }
         }
     }
