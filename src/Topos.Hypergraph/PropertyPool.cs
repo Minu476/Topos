@@ -55,4 +55,22 @@ internal sealed class PropertyPool<T>
             finally { _lock.ExitReadLock(); }
         }
     }
+
+    /// <summary>Snapshot of every (Handle, Value) pair currently in the pool — the columnar dump used by M4 snapshot persistence (spec §6, <c>Topos.Hypergraph.Persistence</c>).</summary>
+    public ImmutableArray<(Handle Handle, T Value)> Entries
+    {
+        get
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                var handles = _values.DenseHandles;
+                var values = _values.DenseValues;
+                var result = new (Handle, T)[handles.Length];
+                for (int i = 0; i < handles.Length; i++) result[i] = (handles[i], values[i]);
+                return [.. result];
+            }
+            finally { _lock.ExitReadLock(); }
+        }
+    }
 }

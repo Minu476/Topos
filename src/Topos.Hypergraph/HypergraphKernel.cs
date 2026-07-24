@@ -31,12 +31,20 @@ namespace Topos.Hypergraph;
 /// </summary>
 public sealed class HypergraphKernel : IHypergraphQuery
 {
-    private readonly HandleAllocator _allocator = new();
+    private readonly HandleAllocator _allocator;
     private readonly PropertyPool<Vertex> _vertices = new();
     private readonly IncidenceIndex _bySource = new();
     private readonly IncidenceIndex _byMember = new();
     private readonly PropertyRegistry _properties = new();
     private readonly ConcurrentDictionary<int, object> _propertyPools = new();
+
+    public HypergraphKernel() => _allocator = new HandleAllocator();
+
+    /// <summary>M4 persistence (spec §6): resumes Handle allocation after a reload rather than from 0, so a newly created vertex can never collide with one restored from a snapshot. See <see cref="HandleAllocator"/>'s constructor doc.</summary>
+    public HypergraphKernel(uint startingHandleIndex) => _allocator = new HandleAllocator(startingHandleIndex);
+
+    /// <summary>The Index the next <see cref="CreateVertex"/> call will allocate — the snapshot-side counterpart consumers persist alongside vertex/incidence data (spec §6 M4).</summary>
+    public uint NextHandleIndex => _allocator.NextIndex;
 
     // ── Vertices ─────────────────────────────────────────────────────────────
 
@@ -48,6 +56,18 @@ public sealed class HypergraphKernel : IHypergraphQuery
     }
 
     public bool TryGetVertex(Handle handle, out Vertex vertex) => _vertices.TryGet(handle, out vertex);
+
+    /// <summary>
+    /// Inserts a vertex at a specific, already-allocated Handle — bypassing
+    /// <see cref="_allocator"/> entirely. For snapshot reload only (spec §6 M4): normal code
+    /// should always go through <see cref="CreateVertex"/>, which is the only path that keeps
+    /// the allocator's monotonic-never-reused guarantee (Invariant 1) intact. Calling this with a
+    /// Handle the allocator doesn't yet know about (e.g. Index &gt;= <see cref="NextHandleIndex"/>)
+    /// creates exactly the collision Invariant 1 forbids — the caller (here, only
+    /// <c>HypergraphSnapshot.Load</c>) is responsible for restoring the allocator's cursor first.
+    /// </summary>
+    public void RestoreVertex(Handle handle, VertexRoles roles, VertexStatus status) =>
+        _vertices.Set(handle, new Vertex(handle, roles, status));
 
     // ── IHypergraphQuery primitives ─────────────────────────────────────────
 
@@ -96,6 +116,14 @@ public sealed class HypergraphKernel : IHypergraphQuery
     /// <summary>Reverse direction: every Incidence where <paramref name="member"/> participates as a member — the index that makes "which hyperedges is this vertex part of" O(1) instead of a full scan.</summary>
     public ImmutableArray<Incidence> IncidencesOf(Handle member) => _byMember.Get(member);
 
+    /// <summary>
+    /// Every Incidence in the kernel, exactly once each — O(V) by iterating every vertex's
+    /// outgoing incidences, since every Incidence has exactly one Source. No dedicated "all
+    /// incidences" index exists (nothing needed one until M4 snapshot persistence, spec §6);
+    /// added for that consumer rather than speculatively.
+    /// </summary>
+    public IEnumerable<Incidence> AllIncidences() => VertexHandles().SelectMany(h => IncidencesFrom(h));
+
     // ── Properties ───────────────────────────────────────────────────────────
 
     public PropertyKey<T> ResolveProperty<T>(string name) => _properties.Resolve<T>(name);
@@ -108,6 +136,10 @@ public sealed class HypergraphKernel : IHypergraphQuery
 
     public bool RemoveProperty<T>(PropertyKey<T> key, Handle handle) =>
         GetPool<T>(key).Remove(handle);
+
+    /// <summary>Every (Handle, Value) pair currently set for <paramref name="key"/> — the columnar dump M4 snapshot persistence writes out per property (spec §6).</summary>
+    public ImmutableArray<(Handle Handle, T Value)> EnumerateProperty<T>(PropertyKey<T> key) =>
+        GetPool<T>(key).Entries;
 
     private PropertyPool<T> GetPool<T>(PropertyKey<T> key) =>
         (PropertyPool<T>)_propertyPools.GetOrAdd(key.Id, static _ => new PropertyPool<T>());

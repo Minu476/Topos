@@ -239,8 +239,9 @@ from day one costs nothing and forecloses nothing. **🟡 OPEN:** confirm "split
 ### 3.4 Concurrency model (🔒 LOCKED, amended 2026-07-24 — see correction below)
 
 > *Design note: M0's exit criterion requires thread-safety, but a concurrency model is
-> expensive to retrofit onto CSR + sparse-set pools after the fact — so it belongs in the
-> contract, not discovered during M0 implementation.*
+> expensive to retrofit onto sparse-set pools after the fact — so it belongs in the
+> contract, not discovered during M0 implementation. (CSR frozen tiers, when they arrive
+> at M4, are immutable post-construction and inherit thread-safety for free.)*
 
 > **🔧 Correction (2026-07-24, measured during M0 implementation):** the original bullet below
 > called for copy-on-write (`ImmutableArray`-per-key) on the mutable tier for lock-free reads.
@@ -326,10 +327,10 @@ implications). See `§12`.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  3. Storage model   CSR (frozen tiers) + IndexMap (mutable)  │
-│                     + sparse-set property pools + specifics- │
-│                     strategy indirection + tombstoning +     │
-│                     the §3.4 concurrency model               │
+│  3. Storage model   CSR (frozen tiers — M4) + IndexMap       │
+│                     (mutable) + sparse-set property pools +  │
+│                     specifics-strategy indirection +         │
+│                     tombstoning + the §3.4 concurrency model │
 ├─────────────────────────────────────────────────────────────┤
 │  2. Graph model     Vertex, Incidence, reification via       │
 │                     Role:Edge, composable views, set algebra │
@@ -445,7 +446,7 @@ Sequenced so each milestone is independently testable. Honest calibration agains
 
 | M | Name | Scope | Exit criterion |
 |---|---|---|---|
-| **M0** | Storage kernel | `Handle`, `Vertex`, `Incidence`, `PropertyKey<T>`. CSR-backed and IndexMap-backed specifics. Generational IDs. Disable-flag tombstoning. The 2 invariants enforced. The §3.4 concurrency model (SWMR + lock-free counters + per-pool locks). | Thread-safe in-memory hypergraph with stable handles passing a fuzz+concurrency suite. **Plus measured benchmarks with two gates:** **(a) relative** — CSR and sparse-set beat a naive `Dictionary<Handle, List<Handle>>` baseline by a margin that matters at the project's scale (else naive wins on maintainability); **(b) absolute** — per-hop traversal latency under an explicit budget derived from the RLB logistics workload's 3.7ms/step (~270Hz) figure `[verified:src=Rich-Learning-Base/INITIAL_README.md]`. The 270Hz figure is the *whole-step* budget (perceive→passive→consonance→active→learn→fossilize); the graph-traversal share must be bounded so the kernel doesn't consume the step. **🟡 OPEN (Q8):** derive the exact per-hop budget from the 270Hz decomposition before M0 implementation starts — but the gate is "must hit a real absolute number," not just "beats a strawman." |
+| **M0** | Storage kernel | `Handle`, `Vertex`, `Incidence`, `PropertyKey<T>`. Generational IDs (the `Generation` field ships from M0 so M4 compaction doesn't force a Handle layout change). Disable-flag tombstoning. The 2 invariants enforced. The §3.4 concurrency model (SWMR + lock-free counters + per-pool locks). **CSR frozen tiers are NOT in M0 — deferred to M4** (see below). | Thread-safe in-memory hypergraph with stable handles passing a fuzz+concurrency suite. **Plus measured benchmarks with two gates:** **(a) relative** — sparse-set pools (`SparseSet<T>` + per-pool `ReaderWriterLockSlim`) beat a naive `Dictionary<Handle, List<Handle>>` baseline at the project's scale (`[verified:src=docs/M0_BENCHMARK_RESULTS_2026-07-24.md §1]` — 2.2–2.4× faster for vertex/property access; within 15% of a *fair* two-direction thread-safe baseline for the incidence index at realistic scale); **(b) absolute** — per-hop traversal latency under an explicit budget derived from the RLB logistics workload's 3.7ms/step (~270Hz) figure `[verified:src=Rich-Learning-Base/INITIAL_README.md]`. **🔒 RESOLVED (2026-07-24, measured):** traversal measured at ~20ns/hop (`[verified:src=docs/M0_BENCHMARK_RESULTS_2026-07-24.md §4]`), negligible vs. 3.7ms — well inside any defensible graph-traversal share. The budget risk Q8 guarded against was not raw traversal cost but the O(N²) fan-in pathology on hub vertices, which the §3.4 redesign fixed (55ms → 337µs at N=8,000; `[verified:src=docs/M0_BENCHMARK_RESULTS_2026-07-24.md §5]`). Gate met in spirit and in fact. **CSR deferred to M4:** the benchmark's own conclusion — "nothing here argues for CSR/frozen tiers yet; the current `SparseSet` + `ReaderWriterLockSlim` design is within noise of a fair naive baseline and meaningfully faster for vertex/property" — made speculative CSR construction the over-engineering the project's discipline warns against. M4 (tiered memory + persistence) is the natural home; the `Generation` field is already in place so that deferral costs nothing. |
 | **M1** | `IHypergraphQuery` + default algorithms | The 9-primitive interface + ~40 default-method algorithms (BFS/DFS, reachable, shortest-path, cycle, transitive closure, SCC). | Algorithm parity with yamafaktory/hypergraph. **Plus a GDS-parity test suite** (🔒 added per the §5 strategy): every algorithm passes a property-based test vs. Neo4j GDS. |
 | **M2** | Reification + roles | `Role:Edge` vertices; `IncidenceRole` on incidences; the asserted/quoted/hypothesized mode flag (from RDF 1.2). | Recursive hypergraph works; nested reification depth-N round-trips. |
 | **M3** | Properties + typed views | `PropertyKey<T>` registry; composable views (subgraph/mask/unmodifiable/union from JGraphT); set algebra (union/intersect/diff from HyperNetX, doubling as version-diff). | A real schema (nodes + relationships + provenance) expressible without ad hoc tables. |
@@ -579,8 +580,9 @@ than the file-level reading in `BASE_INVESTIGATION.md §3.8`. **Recommended read
 | 3-layer substrate (Knowledge / Graph / Storage) | 🔒 LOCKED | this doc §4.1 |
 | Algorithms as cross-cutting capabilities, not a top layer | 🔒 LOCKED (shape) | this doc §4.2 |
 | Cardinality/validation rules live in layer 1 (Knowledge model), not the kernel | 🔒 LOCKED | this doc §4.1 |
-| Concurrency model: SWMR + lock-free counters + per-pool locks + COW pages | 🔒 LOCKED | this doc §3.4 |
-| M0 benchmark gate = relative (beats naive) **AND** absolute (per-hop budget from 270Hz) | 🔒 LOCKED | this doc §6 M0 |
+| Concurrency model: SWMR + lock-free counters + per-pool `ReaderWriterLockSlim`s | 🔒 LOCKED (amended 2026-07-24) | this doc §3.4 |
+| M0 benchmark gate = relative (beats naive) **AND** absolute (per-hop vs. 270Hz) — **BOTH MET** | 🔒 LOCKED (met 2026-07-24) | this doc §6 M0 |
+| CSR frozen tiers deferred from M0 to M4 (benchmark-unforced) | 🔒 LOCKED (2026-07-24) | this doc §6 M0, `M0_BENCHMARK_RESULTS_2026-07-24.md` |
 | Reserved hot-path slots; spectral deferred; packaging split at M4; no reification cap; embeddings as `PropertyKey<float[]>` | 🔒 LOCKED (5 Qs) | `DECISIONS.md §1` |
 | M0 measured-benchmark gate; `float` not `double` | 🔒 LOCKED | `BASE_INVESTIGATION §8.1` |
 | §1.2 empirical case anchored on Condition-aggregation (not the r[3] flag) | 🔒 LOCKED | this doc §1.2 |
@@ -590,7 +592,7 @@ than the file-level reading in `BASE_INVESTIGATION.md §3.8`. **Recommended read
 | M5 sequencing: split it (shapes early, machinery M5) | 🟡 OPEN (Q3) | `DECISIONS.md §2.1` |
 | "Paradox-compression" artifact citation | 🟡 OPEN (Q1, for Nasser) | this doc §12 |
 | Handle generation-bits: include from M0 (a) or add at M4 (b)? | 🟡 OPEN (Q7) | this doc §3.5 |
-| Per-hop latency budget derivation from 270Hz | 🟡 OPEN (Q8) | this doc §6 M0 |
+| Per-hop latency budget derivation from 270Hz | 🔒 RESOLVED (Q8, 2026-07-24) — measured ~20ns/hop, negligible vs. 3.7ms; real budget risk (fan-in) fixed by §3.4 redesign | this doc §6 M0 |
 | GDS per-algorithm Community/Enterprise tier verification | 🟡 OPEN (Q9) | this doc §5.1 |
 | Capability split (Traversal/Analytics/Learning/AI-services/Projection) — confirm exact partition | 🟡 OPEN (Q10) | this doc §4.2 |
 
@@ -648,7 +650,10 @@ RLB-to-contract mapping), and §9 (the independent-validation claims).
 > - **#2 (→ Q7):** Handle generation-bits redundancy — opened as Q7 with the
 >   logical-vs-physical-persistence resolution stated.
 > - **#3 (resolved, §3.4):** added a locked concurrency model (SWMR + lock-free counters +
->   per-pool locks + COW pages) so M0 isn't discovering this retroactively.
+>   per-pool locks) so M0 isn't discovering this retroactively. *(Original text specified
+>   "COW pages" for the mutable tier — corrected 2026-07-24 after M0 benchmarking showed COW
+>   was O(N²) on hub vertices; see the 🔧 correction block in §3.4. The SWMR + per-pool-lock
+>   shape stands; the COW mechanism within it does not.)*
 > - **#4 (→ Q8):** M0 benchmark gate now requires an absolute per-hop budget (from the 270Hz
 >   figure), not just "beats naive." Exact budget derivation is Q8.
 > - **#5 (resolved, §4):** cardinality validation explicitly lives in layer 1 (Knowledge
@@ -669,11 +674,16 @@ formats). *Lean: (a) — Handle layout stability is worth a few bits. But this i
 storage-layout decision with perf implications, so it's Nasser's call.*
 
 **Q8 — derive the per-hop latency budget from the 270Hz figure.** *(From Claude #4.)*
-M0's benchmark gate now requires an absolute number, not just "beats naive." The 270Hz
-(3.7ms/step) is the *whole-step* budget (perceive→passive→consonance→active→learn→fossilize);
-graph traversal is one share. *What fraction? A defensible derivation (e.g., "traversal must be
-<10% of step = <370µs, and at ~5 hops/decision that's <74µs/hop") would give M0 a concrete
-target. Needs Nasser's confirmation of the step-budget split.*
+**🔒 RESOLVED (2026-07-24, during M0 implementation).** The 270Hz (3.7ms/step) is the
+*whole-step* budget; graph traversal is one share. Rather than derive an abstract fraction,
+M0 measured the actual quantity: ~20ns/hop for a 5-hop chain walk
+(`[verified:src=docs/M0_BENCHMARK_RESULTS_2026-07-24.md §4]`) — i.e., ~1µs for a full decision's
+worth of traversal, ~0.03% of the 3.7ms step. Well inside any defensible share without needing to
+argue the split. The budget risk Q8 was *actually* guarding against turned out not to be raw
+traversal cost but the O(N²) fan-in pathology on hub vertices (55ms to build one 8,000-member
+hyperedge membership set) — and that was fixed by the §3.4 redesign (down to 337µs). So the gate
+"the kernel must not consume the step" is met both in the trivial dimension (traversal latency)
+and in the dimension that actually mattered (fan-in). **Gate closed.**
 
 **Q9 — verify GDS per-algorithm Community/Enterprise tier.** *(From Claude #6.)*
 §5.1 locks test-only isolation (handles the GPLv3 concern). But if any of Louvain/LabelProp/

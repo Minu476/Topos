@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Topos.Hypergraph.Persistence</RootNamespace>
+    <AssemblyName>Topos.Hypergraph.Persistence</AssemblyName>
+    <PackageId>Topos.Hypergraph.Persistence</PackageId>
+    <Description>
+      M4 packaging split (spec §3.2 Q3): tiered memory + on-disk persistence for
+      Topos.Hypergraph. Kept as a separate assembly from Topos.Hypergraph itself since RLB
+      already depends on that exact project name/path -- not renamed to "Topos.Core".
+    </Description>
+    <Authors>Nasser Towfigh</Authors>
+    <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
+    <Version>0.1.0-m4</Version>
+  </PropertyGroup>
+
+</Project>
