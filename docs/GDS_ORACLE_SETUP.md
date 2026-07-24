@@ -43,6 +43,20 @@ host (`FsdeApiFactory`) fully replaces `IDriver` with a Moq mock that never stub
 so those endpoints NRE regardless of the real server's auth state. Confirmed by excluding that
 namespace: the other 1,380 FSDE tests, which do exercise the real driver, pass clean.
 
+**Root-cause fix (same day):** the stale `.env` copy above was a symptom, not a one-off — every
+consumer that hardcodes a literal Neo4j password on this machine goes stale on the next rotation.
+Fixed at the source: the password now lives in one place, macOS Keychain (`security` service
+`neo4j-desktop`), and `~/.secrets` resolves `NEO4J_PASSWORD` from it at shell-start instead of
+storing it as plaintext. RLB and FSDE's CLI/tests inherit it via the shell as before. The one
+consumer that doesn't run under a shell — FSDE's `com.richlearning.fsde.daemon` launchd agent —
+got a small wrapper (`~/.fsde/bin/run-daemon.sh`) that resolves the same Keychain entry and execs
+the daemon; the plist's `ProgramArguments` now points at the wrapper instead of `dotnet` directly.
+FSDE's `.env` no longer carries a `NEO4J_PASSWORD` line at all (confirmed safe: `Program.cs`'s
+`.env` loader explicitly never overwrites an already-set env var). Verified with two full
+`launchctl bootout`/`bootstrap` cycles — `"Neo4j connectivity verified"`, no auth errors — and
+FSDE's real (non-mocked) Neo4j test suite, 15/15. Future rotation is one `security
+add-generic-password ... -U` call plus a daemon restart, not a grep across repos.
+
 ## The container
 
 ```bash
