@@ -13,6 +13,15 @@ Community Edition only supports one user database, so there's no safe way to car
 space inside that instance. The GDS-parity harness instead runs against a **fully separate Docker
 container** on non-default ports, so it can never collide with real project data.
 
+**This isolation also matters outside of data collision.** During the Topos codebase review
+(2026-07-24), a separate host install — Neo4j Desktop, Enterprise edition — was found bound to
+`0.0.0.0` on ports 7687/7474 with `dbms.security.auth_enabled=false`, i.e. reachable from the LAN
+with no credentials. That instance has no connection to this harness (no env var ever points at
+it; `Neo4jTestConfig.Default` only resolves to the Docker container above) and was unaffected by
+the GDS-parity work either way, but it's rebound to `127.0.0.1`-only now for the same reason this
+harness avoids the host install: the two Neo4j instances on this machine should stay isolated from
+each other and from the network, not just from each other's data.
+
 ## The container
 
 ```bash
