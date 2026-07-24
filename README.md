@@ -49,11 +49,14 @@ round-trips) passing against it.
 with standalone-library ambition as a falsifiable M5 milestone (a non-RLB second consumer).
 See `docs/DECISIONS.md` §6.
 
-- **Rich-Learning-Base** (`~/Projects/Rich-Learning-Base`) — **first consumer.** Topos
-  becomes a `ProjectReference` in RLB's V2 csproj during M0–M4. RLB's 337-test suite is the
-  first real validation. **Dependency direction preserved:** Topos references nothing
-  upstream (no RLB types leak into Topos); RLB references Topos.
-- **FSDE** (`~/Projects/FSDE`) — still decoupled for now. May adopt Topos later.
+- **Rich-Learning-Base** (`~/Projects/Rich-Learning-Base`) — **first consumer, live.** Topos
+  is a `ProjectReference` in RLB's V2 csproj (added during M0–M4) — see
+  `src/RichLearning.V2/Learning/ToposGraphProjection.cs`, which does hyperedge-aware pathfinding
+  over a Topos `HypergraphKernel` built from RLB's landmarks/transitions/hyperedges. RLB's
+  346-test suite, including live Neo4j round-trips, passes against it. **Dependency direction
+  preserved:** Topos references nothing upstream (no RLB types leak into Topos); RLB references
+  Topos.
+- **FSDE** (`~/Projects/FSDE`) — still decoupled. May adopt Topos later.
 
 **Verification strategy:** Neo4j GDS (Graph Data Science) is the correctness oracle for
 Topos's standard algorithms — the Lean-for-NexusVerifier pattern applied to graph
