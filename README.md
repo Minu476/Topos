@@ -88,7 +88,18 @@ here, in `docs/GDS_ORACLE_SETUP.md`.
 
 ## Provenance and integrity
 
-Authored in ZCode by GLM-5.2. Every claim in the investigation is tagged
-`[verified:src=…]`, `[verified:spec=…]`, `[verified:paper=…]`, `[verified:web=…]`, or
-`[unverified:inferred]` — the same discipline NexusVerifier's `SOLVED_PROBLEMS.md` enforces
-for formal proofs (verified vs. axiom-scaffolded vs. `sorry`). No unsourced assertions.
+The investigation docs and the original specification draft (`docs/BASE_INVESTIGATION.md`,
+`docs/AGENT_MEMORY_COMPETITORS.md`, `docs/SPECIFICATION.md`) were authored in ZCode by GLM-5.2,
+under a source-verification discipline — every claim tagged `[verified:src=…]`,
+`[verified:spec=…]`, `[verified:paper=…]`, `[verified:web=…]`, or `[unverified:inferred]`, the
+same standard NexusVerifier's `SOLVED_PROBLEMS.md` enforces for formal proofs (verified vs.
+axiom-scaffolded vs. `sorry`). No unsourced assertions.
+
+The specification was then reviewed and approved by GPT and Claude (`docs/reactions/`,
+`docs/DECISIONS.md`) before implementation started. The codebase and later working docs have
+multiple AI contributors across sessions rather than a single author — M0 is explicitly credited
+"lead dev: Claude/Sonnet" in its commit message, and several `docs/*.md` files (e.g.
+`M0_BENCHMARK_RESULTS_2026-07-24.md`, `PARADOX_COMPRESSION_SEARCH.md`,
+`GDS_ALGORITHM_TIERS.md`) carry their own `**Author:**` line — check individual commit messages
+and doc headers for specific attribution rather than assuming ZCode/GLM-5.2 authored everything
+in the repo.
