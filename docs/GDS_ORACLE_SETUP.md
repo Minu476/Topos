@@ -22,6 +22,15 @@ the GDS-parity work either way, but it's rebound to `127.0.0.1`-only now for the
 harness avoids the host install: the two Neo4j instances on this machine should stay isolated from
 each other and from the network, not just from each other's data.
 
+**Follow-up (same day):** auth was also re-enabled on that host instance
+(`dbms.security.auth_enabled=true`, was `false`), and its `neo4j` user password was rotated after
+the prior password was typed into a chat session — treated as compromised on principle, not because
+of any observed misuse. New credential lives only in `~/.secrets` (`NEO4J_PASSWORD`, chmod 600, not
+committed anywhere). Verified post-rotation: unauthenticated connections are rejected, the old
+password no longer authenticates, the new one does, and `tests/Topos.Tests.GdsOracle` (which never
+touched this instance) still passes 9/9 against its own Docker container. None of this required any
+change to the Docker oracle itself.
+
 ## The container
 
 ```bash
