@@ -31,6 +31,18 @@ password no longer authenticates, the new one does, and `tests/Topos.Tests.GdsOr
 touched this instance) still passes 9/9 against its own Docker container. None of this required any
 change to the Docker oracle itself.
 
+**Downstream check (same day):** re-enabling auth on the host instance is a real behavior change
+for anything else on this machine that talks to it with real (not mocked) credentials, so both
+other local consumers were checked. `Rich-Learning-Base` (`RichLearning.Base.sln`) — 346/346,
+including its 9 live `Neo4jGraphMemoryIntegrationTests`/`EdgeThetaPersistenceTests`, confirmed
+actually round-tripping through the rebound + rotated instance, not vacuously skipped. `FSDE`
+(`FSDE.sln`) — its own `.env` had a stale/quoted `NEO4J_PASSWORD` value (harmless while auth was
+off, since Neo4j ignores credentials entirely in that mode) and was updated to match; separately,
+21 pre-existing `Api`-suite failures were found and are **unrelated** to any of this — that test
+host (`FsdeApiFactory`) fully replaces `IDriver` with a Moq mock that never stubs `AsyncSession(...)`,
+so those endpoints NRE regardless of the real server's auth state. Confirmed by excluding that
+namespace: the other 1,380 FSDE tests, which do exercise the real driver, pass clean.
+
 ## The container
 
 ```bash
