@@ -21,13 +21,27 @@ AI-oriented embedded graph database — for on-device AI / privacy-focused graph
 
 ## Status
 
-**Base-investigation phase.** No code yet, by design. The investigation document is the
-input to the final specification, which is being written by
-[Fable / GPT review](https://github.com) (see `docs/BASE_INVESTIGATION.md`, §7 — open
-questions for the spec writers).
+**M0–M6 implemented; M7 (spectral, deferred by design) and M8 (OSS polish) remain.** The
+specification (`docs/SPECIFICATION.md`) was reviewed and approved (GPT + Claude passes,
+`docs/reactions/`) before implementation started; `docs/DECISIONS.md` tracks what's locked vs.
+still open.
 
-The intended roadmap (M0 storage kernel → M8 OSS polish) is sketched in the investigation
-document, §6. Realistic calibration for an *industrial-level* C# library: months, not weeks.
+- **M0** — storage kernel: `Handle`/`Vertex`/`Incidence`/`PropertyKey<T>`, the 2 invariants, SWMR
+  concurrency (`ReaderWriterLockSlim`-per-pool). Benchmark-gated per spec §6, including a
+  benchmark-driven redesign after measured data — see `docs/M0_BENCHMARK_RESULTS_2026-07-24.md`.
+- **M1** — `IHypergraphQuery` + traversal algorithms (BFS/DFS/shortest-path/cycle/SCC/transitive
+  closure), verified against a real Neo4j GDS oracle (`tests/Topos.Tests.GdsOracle`; setup in
+  `docs/GDS_ORACLE_SETUP.md`).
+- **M2–M4** — reification (asserted/quoted/hypothesized mode), composable views + set algebra,
+  tiered persistence (`Topos.Hypergraph.Persistence`, package split at this boundary).
+- **M5** — embeddings (`PropertyKey<float[]>` + ANN), learnable edge weights, provenance — plus
+  the falsifiability gate: a non-RLB second consumer (`samples/Topos.Samples.ChatMemory`).
+- **M6** — s-walk traversal, label propagation, triangle count, modularity.
+
+173 tests pass across the kernel, persistence, sample, and GDS-parity suites. Topos is also a live
+`ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target — see
+`Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live Neo4j
+round-trips) passing against it.
 
 ## Relationship to other projects
 
