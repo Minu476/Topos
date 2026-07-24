@@ -45,6 +45,21 @@ See `docs/DECISIONS.md` §6.
 Topos's standard algorithms — the Lean-for-NexusVerifier pattern applied to graph
 algorithms. See `docs/DECISIONS.md` §6 and `AGENTS.md` §9.
 
+## Local development — Neo4j credentials
+
+The GDS-parity oracle (`tests/Topos.Tests.GdsOracle`) runs against an isolated, disposable Docker
+container (`topos-gds-oracle`, non-default ports, its own throwaway credentials) — never against
+any developer's real Neo4j instance. See `docs/GDS_ORACLE_SETUP.md` for how to stand it up.
+
+Separately, if you also run a general-purpose Neo4j instance on this machine (e.g. Neo4j Desktop,
+used by other local projects like Rich-Learning-Base and FSDE) — as of 2026-07-24 that instance is
+bound to `127.0.0.1` only, auth-enabled, and its password lives in **macOS Keychain**
+(`security` service `neo4j-desktop`), not in any repo or plaintext file. Consumers resolve it
+per-context: interactive shells via `~/.secrets` (which reads Keychain at shell-start), and
+non-shell processes like FSDE's launchd daemon via a small wrapper script that reads the same
+Keychain entry. Full incident writeup, including why a hardcoded `.env` copy is the wrong pattern
+here, in `docs/GDS_ORACLE_SETUP.md`.
+
 ## Documents
 
 | Document | Purpose |
@@ -52,6 +67,7 @@ algorithms. See `docs/DECISIONS.md` §6 and `AGENTS.md` §9.
 | [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | **The consolidated spec — under GPT+Claude review.** Opens with the verified RLB empirical case, incorporates the 4-primitive contract, GPT's 5-layer architecture, the resolved open questions, and the M0–M8 roadmap with Neo4j GDS verification + falsifiable M5. §12 lists the open questions for reviewers. |
 | [`docs/BASE_INVESTIGATION.md`](docs/BASE_INVESTIGATION.md) | Source-verified analysis of 10 libraries + the proposed storage contract + roadmap skeleton. The artifact Fable and GPT enhance into the final spec. |
 | [`docs/AGENT_MEMORY_COMPETITORS.md`](docs/AGENT_MEMORY_COMPETITORS.md) | Source-verified survey of the four systems competing for the agent-memory niche (Zep/Graphiti, mem0, Letta, Cognee) — answers "did the field reject hypergraphs, or never consider them?" Includes the n-ary-DB capability matrix (TypeDB/TigerGraph) and hypergraph-research-prototype preemption. |
+| [`docs/GDS_ORACLE_SETUP.md`](docs/GDS_ORACLE_SETUP.md) | How the GDS-parity oracle container is set up, and the local Neo4j credential-isolation writeup above. |
 
 ## Provenance and integrity
 
