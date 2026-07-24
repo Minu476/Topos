@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Topos.Samples.ChatMemory</RootNamespace>
+    <AssemblyName>Topos.Samples.ChatMemory</AssemblyName>
+    <Description>
+      M5 falsifiability gate (spec §6 M5 / §6.1): the non-RLB second consumer. A toy chat-agent
+      memory built using ONLY Topos.Hypergraph's public API, with zero RLB-shaped assumptions --
+      entities, conversation turns, N-ary mention relationships, semantic recall. If Topos can't
+      serve this domain without kernel changes, the "standalone library" claim isn't true yet.
+    </Description>
+  </PropertyGroup>
+
+</Project>
