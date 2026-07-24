@@ -322,7 +322,7 @@ treatment.
 
 ### 3.9 TypeDB (vaticle) + EnTT (ECS) — the two blueprints
 
-**TypeDB** (typed graph DB, GPL-3, server-side): The load-bearing extract is the
+**TypeDB** (typed graph DB, MPL-2.0, server-side): The load-bearing extract is the
 **role-based N-ary relation model**. Relations declare role interfaces via `relates`;
 participants implement them via `plays R:role`; N-ary by construction; **reification is
 native and documented** — "relation types can also play roles" → nested relations. This maps
@@ -330,7 +330,14 @@ almost **1:1** onto a `VertexRoles` bitmask + `IncidenceRole` tag + reification-
 design. `[verified:docs=docs.vaticle.com]` TypeDB also ships a reasoning/inference engine
 (rule-based). Validates the role/incidence design — the whole model TypeDB built a query
 language and server around is the model this library converged on. Doesn't transfer: server
-architecture; symbolic-only (no embeddings/vectors); no provenance/versioning primitives.
+architecture (no embedded mode — relevant to why the agent-memory field didn't adopt it; see
+`AGENT_MEMORY_COMPETITORS.md` §5.5); symbolic-only (no embeddings/vectors); no
+provenance/versioning primitives. **License correction:** TypeDB is MPL-2.0 (weak copyleft,
+permissive for most uses), **not GPL-3** as a prior draft stated.
+`[verified:src=raw.githubusercontent.com/vaticle/typedb/master/LICENSE]` TypeDB is genuinely
+n-ary-native — the only production-grade n-ary DB — but it is server-only, TypeQL-locked, and
+ecosystem-small, which is why no agent-memory system adopted it (see
+`AGENT_MEMORY_COMPETITORS.md` §5.5 Attack A).
 
 **EnTT** (C++ ECS, MIT): The load-bearing extract is the **storage layout**, verified at
 source-code level. **Sparse-set based, not archetype.** One `storage<T>` pool per component

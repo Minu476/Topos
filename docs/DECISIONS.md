@@ -185,6 +185,122 @@ In priority order:
     graph into both Topos and Neo4j, runs paired algorithms, diffs results. Added to the
     roadmap as part of M1.
 
+### 2026-07-23 — CLAUDE REVIEW OF SPECIFICATION: 4 resolved, 3 opened
+
+- **Decider:** GLM-5.2 (applying Claude's review), pending Nasser confirmation on the opened items
+- **Question:** Claude's first review of `docs/SPECIFICATION.md` surfaced 7 issues beyond the
+  doc's own §12 open questions (saved verbatim at `docs/reactions/03_Claude_specification-review.md`).
+- **Decisions:**
+  - **#1 RESOLVED** — §1.2's empirical case was over-anchored on the `r[3]=1.0` discriminator
+    (a patchable implementation quirk, not a theorem). Re-anchored on the **Condition-aggregation
+    semantics**: joint eligibility over N members produces one atomic event with one reward
+    signal and joint statistics — binary can represent the topology but not the atomic event
+    semantics (credit assignment, joint SuccessRate, hard-gate conjunction under learning).
+    Softened "proof" to "pragmatic non-derivability, evidenced in production code." The `r[3]`
+    flag is now corroborating code evidence, not the load-bearing argument.
+  - **#3 RESOLVED** — added §3.4 concurrency model (🔒 LOCKED): SWMR at the kernel boundary +
+    lock-free `Interlocked.Increment` counters + per-pool write locks + copy-on-write pages for
+    snapshot readers. Derived from yamafaktory's `AtomicU64` pattern + RLB's existing
+    `ConcurrentDictionary` storage + EnTT's per-pool design.
+  - **#5 RESOLVED** — cardinality/validation rules (e.g., RLB's D2) live in **layer 1
+    (Knowledge model)**, not the kernel. Resolves the apparent tension with "the store records,
+    it doesn't judge" (§3.2 Q4): the contract has no cap; the layer-1 domain type enforces it at
+    construction. Clarifies the RLB-port seam (Q5): `HyperEdge.ValidateCardinality` becomes a
+    layer-1 domain type.
+  - **#7 RESOLVED** — added one-sentence scope clarification (§2.2): Topos stores
+    `fact`/`belief`/mode-flag but does *not* reason over them (no contradiction resolution,
+    truth-maintenance, or entailment). Storing ≠ revising.
+- **Opened (pending Nasser/reviewer input):**
+  - **#2 → Q7** — Handle generation-bits: include from M0 (lean) or add at M4? Resolution
+    stated (logical persistence ≠ physical slot relocation under M4 compaction), but the
+    storage-layout call is Nasser's.
+  - **#4 → Q8** — derive the per-hop latency budget from the 270Hz step figure. M0 gate now
+    requires an absolute number; the exact derivation needs the step-budget split confirmed.
+  - **#6 → Q9** — verify GDS per-algorithm Community/Enterprise tier. GPLv3 licensing handled
+    by test-only isolation (🔒 LOCKED in §5.1); the algorithm-tier question is owed verification
+    before M6.
+- **Rationale:** Claude's triage was correct — #1, #3, #5 were the pre-contract-lock items (the
+  empirical opener + two missing decisions). All three are resolved; §3 is now defensible as
+  locked modulo Q7 (Handle layout). The three opened items are genuine adjudication questions,
+  not gaps the doc should have caught.
+- **What it changes:** `SPECIFICATION.md` §1.2 (re-anchored), §2.2 (scope clarification),
+  §3.4 (new concurrency subsection), §3.5 (new Handle-generation subsection), §4 (cardinality
+  placement stated), §5.1 (new GDS-licensing subsection), §6 M0 (dual benchmark gate), §11/§12
+  (tables updated with 4 new locked + 3 new open items). `reactions/03_Claude_specification-review.md`
+  preserved verbatim.
+
+### 2026-07-23 — GPT REVIEW OF SPECIFICATION: approved for implementation; 5 changes applied
+
+- **Decider:** GPT (approved), GLM-5.2 (applied), pending Nasser sign-off on opened Q10
+- **Question:** GPT's review of `docs/SPECIFICATION.md` (saved verbatim at
+  `docs/reactions/04_GPT_specification-review.md`) — approved for implementation with 5
+  requested changes. Scores: technical vision 9.5/10, engineering maturity 9/10, evidence
+  discipline 9.5/10, specification clarity 8.5/10, risk of overengineering 7/10.
+- **Decisions (all 5 applied):**
+  - **#1 APPLIED** — §1 compressed ~40%. Now leads with a 3-line thesis ("RLB learns over
+    atomic n-ary events; binary decomposition destroys the atomicity of learning; therefore
+    the storage substrate should preserve n-ary structure"). Reframed explicitly as a workload
+    argument, not a mathematical-impossibility claim.
+  - **#2 APPLIED** — reviewer-attribution removed from the spec body. ~20 inline "per Claude
+    review #X" / "GPT's reframe" / "Fable's" parentheticals converted to neutral "Design note"
+    framing or removed. Process provenance consolidated in a new Appendix A (Design History);
+    evidence provenance (`[verified:src]` tags) unchanged in the body.
+  - **#3 APPLIED** — "AI age" / "AI-memory niche" reworded to workload descriptors
+    ("long-lived adaptive symbolic memory workloads"). Body is now era-neutral.
+  - **#4 APPLIED** — §4 architecture revised: the top "Algorithms" layer is no longer a single
+    stratum. The spec now has a **3-layer substrate** (Knowledge / Graph / Storage, 🔒 LOCKED)
+    plus **5 cross-cutting capabilities** above it (Traversal / Analytics / Learning / AI
+    services / Projection). Rationale: different algorithm families operate on different
+    layers — a shortest-path routine has nothing in common with a theta-update except "runs on
+    graphs." Note: this revises GPT's *own* earlier 5-layer proposal; the substrate is
+    unchanged. Opened Q10 on the exact capability partition.
+  - **#5 confirmed** — evidence discipline maintained.
+- **Two framing points acknowledged (no contract change):**
+  - **"Memory Event" abstraction** — GPT's largest architectural comment: the deeper
+    abstraction is *memory*, not graphs/hypergraphs/incidences; hypergraph may be one
+    implementation of a "persistent symbolic memory substrate." Added as explicit **horizon**
+    in new §2.4, NOT a contract restructure — per GPT's own caveat ("don't change the
+    architecture today... earn the right to generalize"). The M5 second-consumer test is the
+    checkpoint where generalization becomes a live question.
+  - **Identity question** — GPT endorses the current lean (build the hypergraph M0–M3, hold
+    the incidence-model reframe). Confirmed in §2.3–§2.4.
+- **Rationale:** GPT's feedback was overwhelmingly editorial (the doc "crossed an important
+  threshold... reads like the design specification for a serious systems project"). The one
+  substantive architectural change (#4, algorithms-as-capabilities) revises GPT's own earlier
+  proposal and is genuinely cleaner — algorithms do cut across layers. The "Memory" horizon is
+  kept as framing, not structure, exactly as GPT recommended.
+- **What it changes:** `SPECIFICATION.md` §1 (compressed, thesis-led), §2.1 (workload
+  rewording), §2.4 (new horizon subsection), §3.4/§3.5/§5.1 (neutral design notes), §4 (fully
+  revised: 3-layer substrate + capabilities), §11 (table updated), §12 (Q10 added), Appendix A
+  (new). `reactions/04_GPT_specification-review.md` preserved verbatim.
+
+### 2026-07-23 — GPT FINAL APPROVAL OF SPECIFICATION: no further changes requested
+
+- **Decider:** GPT — approved
+- **Question:** GPT's re-review of `SPECIFICATION.md` after the 5 changes from
+  `04_GPT_specification-review.md` were applied. (Saved verbatim at
+  `docs/reactions/05_GPT_specification-final-approval.md`.)
+- **Decision:** **APPROVED for implementation.** Scores: problem definition 10/10, evidence
+  discipline 9.5/10, architectural consistency 9.5/10, scope control 9.5/10, roadmap realism
+  9/10, technical credibility 9.5/10. "This now reads much more like the specification for a
+  serious systems project than a conceptual proposal."
+- **No further changes requested.** Two observations, both non-blocking:
+  1. **Philosophical identity risk** (hypergraph library vs universal symbolic-AI substrate)
+     — GPT confirms the current lean (build hypergraph M0–M3) "is exactly right": "If, three
+     years from now, people discover that Topos naturally projects to RDF, property graphs,
+     relational tables, and hypergraphs… then the market will rename it for you." Maps to
+     existing Q2; no action. `[confirmed — §2.3–§2.4 already capture this lean + horizon]`
+  2. **Tiny suggestion: trim 10–15% repetition** (topology-vs-atomicity, RLB-first rationale
+     appear in multiple sections). GPT's own framing: "isn't wrong—it reinforces the thesis…
+     after a few more review cycles." **Deferred, not applied now** — the spec is approved,
+     and further doc-polishing is the overengineering both reviewers warned against (7/10
+     risk). Trimming happens naturally during M0 as code clarifies what's load-bearing, and as
+     a final polish pass before OSS (M8). `[deferred to M0/M8]`
+- **What it changes:** nothing in the spec. **The specification phase is complete.** Both
+  reviewers (GPT, Claude) have approved. The remaining open questions (Q1–Q3, Q7–Q10) are
+  engineering adjudication items, not design-coherence questions — exactly the kind a spec
+  should "leave for implementation to answer."
+
 ---
 
 ## 7. Decision log format for future entries

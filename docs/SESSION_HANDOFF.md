@@ -1,4 +1,4 @@
-# Session Handoff — Topos (base-investigation phase complete)
+# Session Handoff — Topos (spec approved by GPT + Claude; M0 unblocked)
 
 **Last updated:** 2026-07-23
 **Authored in:** ZCode (GLM-5.2)
@@ -17,15 +17,17 @@ this handoff.
 (*topos* = Greek for "place/location", root of *topology*) invokes the central thesis:
 knowledge stored as topological graph structure rather than neural-network weights.
 
-**Status: base-investigation phase complete. No code yet, by design.**
+**Status: investigation phase complete (library + competitor surveys both done). No code yet,
+by design.**
 
-The library does not yet exist as code. What exists is the source-verified investigation
-(`docs/BASE_INVESTIGATION.md`) that establishes *why* the library should exist, *what* to
-borrow from existing systems, and a proposed *storage contract*. Two external reviews
-(GPT, Fable) have arrived and been incorporated into `docs/DECISIONS.md`.
+The library does not yet exist as code. What exists is two source-verified surveys —
+`docs/BASE_INVESTIGATION.md` (10 hypergraph libraries) and the now-completed
+`docs/AGENT_MEMORY_COMPETITORS.md` (Zep/Graphiti, mem0, Letta, Cognee) — plus a proposed
+storage contract. Two external reviews (GPT, Fable) have arrived and been incorporated into
+`docs/DECISIONS.md`.
 
-The next phase is: (a) write the missing competitor survey, (b) Nasser adjudicates one
-strategic fork, (c) write the final spec, (d) start M0.
+The next phase is: (a) write the final spec, (b) start M0. Both strategic blockers are now
+cleared (fork = build-as-RLB-kernel; verification = Neo4j GDS oracle).
 
 ---
 
@@ -38,12 +40,17 @@ strategic fork, (c) write the final spec, (d) start M0.
 ├── .mcp.json                         # FSDE MCP wiring
 ├── .agents/mcp_config.json           # FSDE MCP wiring (mirror)
 └── docs/
-    ├── BASE_INVESTIGATION.md         # ✅ REVISED this session (a/b/c applied)
-    ├── DECISIONS.md                  # ✅ NEW this session — what's locked vs. open
+    ├── BASE_INVESTIGATION.md         # ✅ the 10-library survey + proposed contract + roadmap
+    ├── AGENT_MEMORY_COMPETITORS.md   # ✅ Zep/mem0/Letta/Cognee survey + n-ary-DB matrix
+    ├── SPECIFICATION.md              # ✅ consolidated spec — APPROVED by GPT + Claude; M0-ready
+    ├── DECISIONS.md                  # ✅ what's locked vs. open (all reviews synthesized)
     ├── SESSION_HANDOFF.md            # this file
     └── reactions/
-        ├── 01_GPT_first-reaction.md       # GPT's review (verbatim)
-        └── 02_Fable_first-reaction.md      # Fable's review (verbatim)
+        ├── 01_GPT_first-reaction.md            # GPT's first review of BASE_INVESTIGATION
+        ├── 02_Fable_first-reaction.md           # Fable's first review of BASE_INVESTIGATION
+        ├── 03_Claude_specification-review.md    # Claude's review of the SPECIFICATION
+        ├── 04_GPT_specification-review.md       # GPT's first review of the SPECIFICATION
+        └── 05_GPT_specification-final-approval.md # GPT's final APPROVAL (no further changes)
 ```
 
 **No code. No tests. No .git.** Topos sits in the working tree of the parent `~/Projects`
@@ -68,32 +75,68 @@ repo, untracked. First commit / `git init` is Nasser's to make (see §7 below).
    consensus, 1 divergent (M5 sequencing — lean toward Fable's "split it"), 1 strategic fork
    (decouple-vs-RLB-kernel — Nasser's call, blocks the spec).
 6. **Wrote this handoff + AGENTS.md + FSDE wiring.**
+7. **[LATER SESSION] Wrote `docs/AGENT_MEMORY_COMPETITORS.md`** — source-verified survey of
+   Zep/Graphiti, mem0, Letta, Cognee (the four systems competing for the agent-memory niche).
+   Ran four parallel source-grade research agents reading actual repo code/migrations. Same
+   9-point schema + `[verified:src]` discipline as BASE_INVESTIGATION. **Closed the
+   investigation's biggest gap.** Headline findings: the field did NOT consider hypergraphs
+   (zero evidence); binary is good enough for the 80% (mem0 retreated from graphs to vectors);
+   binary costs expressiveness in exactly 3 places that map onto Topos primitives.
+8. **[LATER SESSION] Reviewed the competitor survey** (3 independent agents: fresh-source
+   re-verification + landscape audit + n-ary-DB investigation). **All 5 load-bearing claims
+   held**; caught and fixed 3 material issues: (a) Graphiti's own paper claims "hyper-edges"
+   (preempted with the formal `N_s × N_s` refutation); (b) §5.4 overclaimed "no n-ary DB
+   exists" (rewritten to the intersection form — TypeDB is real but server-only/TypeQL-locked);
+   (c) missed 3 hypergraph research prototypes (HyperGraphRAG/HGMEM/HyperMem — added a §5.5
+   preemption). Also corrected TypeDB license GPL-3 → MPL-2.0 in BASE_INVESTIGATION §3.9.
+9. **[LATER SESSION] Wrote `docs/SPECIFICATION.md`** — the consolidated spec, ready for
+   GPT+Claude review. Opens with the verified RLB empirical evidence (deferred-HyperEdge /
+   synthesis-break theorem + 5-domain measured results), incorporates the 4-primitive contract,
+   GPT's 5-layer architecture, the resolved open questions, the M0–M8 roadmap with the
+   measured-benchmark M0 gate + GDS verification + falsifiable M5. Includes a consolidated
+   `§12` listing the 6 `🟡 OPEN` questions for reviewers. **One integrity issue surfaced (Q1):
+   the "paradox-compression" finding referenced in earlier handoffs has no RLB artifact by that
+   name; the spec uses the verified synthesis-break evidence instead and asks Nasser to confirm.**
 
 ---
 
 ## 4. The three things that matter most for the next session
 
-### 4.1 The biggest open gap (Fable identified it)
+### 4.1 The biggest open gap — CLOSED (competitor survey written)
 
-**The investigation surveyed hypergraph libraries but not agent-memory competitors.** The
-systems actually competing for the "AI agent memory substrate" niche — **Zep/Graphiti,
-mem0, Letta, Cognee** — are property-graph or temporal-binary-graph systems, not hypergraphs.
-All chose binary graphs.
+**Was:** the investigation surveyed hypergraph libraries but not agent-memory competitors
+(Fable identified this as the biggest gap). The systems competing for the "AI agent memory
+substrate" niche — **Zep/Graphiti, mem0, Letta, Cognee** — all chose binary graphs or
+non-graph representations.
 
-**The unanswered feasibility question:** *is the hypergraph gap unfilled because nobody
-built it, or because the field tried hypergraphs and decided binary was good enough for
-agent memory?*
+**Now: `docs/AGENT_MEMORY_COMPETITORS.md` exists and answers the feasibility question.**
+Source-verified survey of all four. The answer to *"is the hypergraph gap unfilled because
+nobody built it, or because the field decided binary was good enough?"*:
 
-**Next action: write `docs/AGENT_MEMORY_COMPETITORS.md`.** Source-verified survey of those
-four systems against the same 9-point schema used in BASE_INVESTIGATION. Same integrity
-standard (`[verified:src=…]` tags). This is the investigation's biggest gap and it's the
-first thing a skeptic will attack.
+- **The field did NOT try hypergraphs and reject them** — zero evidence in any codebase of
+  hypergraph consideration (grep + issue search all return 0 hits). The binary choice is an
+  unexamined default inherited from the property-graph DB lineage.
+- **Binary IS good enough for the dominant 80%** (per-user pairwise conversational facts) —
+  mem0's April-2026 retreat from graphs to pure vectors is the sharpest evidence.
+- **But binary actively costs expressiveness in three specific places** — n-ary facts
+  (forbidden by extraction prompts), cell-level/per-participation properties (no home),
+  reified facts-as-entities (impossible at model layer) — which map exactly onto three
+  Topos primitives. **That is the opening.**
 
-The counter-argument to "binary is good enough" lives in Rich-Learning-Base's own evidence
-(the paradox-compression finding, the deferred-HyperEdge trigger): n-ary composition with
-measured non-derivable payloads cannot be faithfully expressed in binary edges without lossy
-encoding. **That empirical argument — not the library survey — should open the final spec.**
-(Fable's strongest point.)
+**Two clarifications the survey surfaced that matter:**
+- **mem0 is no longer a graph system** — the OSS graph layer was deleted 2026-04-14
+  (`a488e19044e4`). Current OSS = vector store + entity-tag vector store.
+- **Letta was never a graph system** — exhaustive grep returns zero graph constructs; the
+  "Letta is adding graph features" premise doesn't hold. Its tiered-memory design is a
+  coherent philosophy (LLM-as-reasoner, text-as-memory), not a graph that fell short.
+
+Only **Graphiti and Cognee** are genuinely graph-structured today, and both are strictly
+binary. See `AGENT_MEMORY_COMPETITORS.md` §5 for the full answer and §7 for what it validates
+in Topos's contract.
+
+**Still pending (Fable's empirical point):** the RLB paradox-compression + deferred-HyperEdge
+argument should open the final spec — it's the proof binary is *not* always good enough, and
+no survey can substitute for it.
 
 ### 4.2 The strategic fork — RESOLVED (build as RLB's kernel first)
 
@@ -156,21 +199,34 @@ divergent one: M5 sequencing (lean toward "split it — shapes early, machinery 
 
 **Read AGENTS.md and this handoff first. Then:**
 
-- **If Nasser says "write the competitor survey"** → write `docs/AGENT_MEMORY_COMPETITORS.md`.
-  Fan out Explore agents on Zep/Graphiti, mem0, Letta, Cognee. Same 9-point schema, same
-  `[verified:src]` discipline. Output one markdown doc.
-- **If Nasser says "I've decided the strategic fork"** → record it in `docs/DECISIONS.md` §6
-  (decision log format), update §3.1 to reflect the decision, then unblock the spec.
-- **If Nasser says "write the spec"** → only after (a) the competitor survey exists and
-  (b) the strategic fork is decided. Spec lives at `docs/SPECIFICATION.md`, opens with the
-  RLB paradox-compression empirical argument (Fable's point), incorporates the 4-primitive
-  contract, the 5-layer architecture (GPT), the resolved open questions, and the M0–M8
-  roadmap with the measured-benchmark M0 gate.
-- **If Nasser says "start M0"** → don't, until the spec exists. M0 without a spec is
-  premature; the contract is proposed, not frozen.
-- **If Nasser asks about RLB** → RLB is untouched and stable. The 337-test V2 suite is green
-  without any of this. Topos does not reference RLB. Do not couple them without Nasser's
-  explicit decision on the strategic fork.
+- **The competitor survey is DONE** → `docs/AGENT_MEMORY_COMPETITORS.md`.
+- **The strategic fork is RESOLVED** → build as RLB's kernel first (`docs/DECISIONS.md` §6).
+- **The verification strategy is RESOLVED** → Neo4j GDS oracle (`docs/DECISIONS.md` §6).
+- **The spec is APPROVED** → `docs/SPECIFICATION.md`. Both GPT (twice — first review, then
+  final approval with 9–10/10 scores and "no further changes requested") and Claude have
+  approved for implementation. The specification phase is **complete**. Reactions are in
+  `docs/reactions/03–05`.
+- **THE NEXT ACTION IS M0.** The spec's M0 scope (`SPECIFICATION.md §6`) is the storage kernel:
+  `Handle`, `Vertex`, `Incidence`, `PropertyKey<T>`; CSR + IndexMap specifics; generational IDs;
+  tombstoning; the 2 invariants; the §3.4 concurrency model (SWMR + lock-free counters +
+  per-pool locks + COW pages). Exit gate: thread-safe in-memory hypergraph + measured benchmarks
+  (relative: beats naive `Dictionary<Handle, List<Handle>>`; absolute: per-hop budget from the
+  270Hz figure).
+- **Two open questions most affect M0 code shape — resolve before/as M0 starts:**
+  - **Q1 (for Nasser):** the "paradox-compression" citation — is it a real RLB artifact or a
+    paraphrase? Affects the §1 opener wording only; doesn't block M0 code.
+  - **Q7:** Handle generation-bits — include from M0 (lean) or add at M4? Affects the Handle
+    struct layout. Lean is (a) include from M0 — Handle layout stability is worth a few bits.
+- **The rest (Q2, Q3, Q8, Q9, Q10) can be resolved as their milestone approaches** — they're
+  engineering adjudication items, not design-coherence blockers. GPT: "Those are exactly the
+  kinds of questions a specification should leave for implementation to answer."
+- **Do NOT keep polishing the spec.** Both reviewers warn against the overengineering risk
+  (7/10). The "trim 10–15% repetition" suggestion (GPT's final review) is explicitly deferred
+  to M0/M8 — docs get trimmed naturally as code clarifies what's load-bearing. Further
+  doc-revision now is the trap.
+- **If Nasser asks about RLB** → RLB is in scope (build-as-RLB-kernel). RLB's 337-test V2 suite
+  becomes the first consumer during M0–M4. Dependency direction preserved: Topos references
+  nothing upstream; RLB references Topos.
 
 ---
 
@@ -185,10 +241,11 @@ divergent one: M5 sequencing (lean toward "split it — shapes early, machinery 
   validation). It's been downgraded in §1. Apple has not stated the motive.
 3. **Don't start M0 before the spec.** The contract is *proposed*, not frozen. Code now
    would lock decisions that should be made in the spec with Nasser's adjudication.
-4. **Don't forget the missing competitor survey.** It's the investigation's biggest gap and
-   the first thing a skeptic attacks. The library survey doesn't answer "why did the
-   agent-memory field choose binary graphs?" — only the competitor survey + RLB's empirical
-   evidence can.
+4. **The competitor survey is done.** `docs/AGENT_MEMORY_COMPETITORS.md` answers "why did the
+   agent-memory field choose binary graphs?" — it didn't consider hypergraphs (zero evidence),
+   binary is good enough for the 80%, and binary costs expressiveness in 3 specific places
+   that map onto Topos primitives. What the survey *cannot* prove is that binary is *insufficient*
+   — that proof comes from RLB's paradox-compression evidence and should open the spec.
 5. **Maintain the `[verified:src]` discipline.** Every claim about an external system must
    be source-traceable. `[unverified:inferred]` for reasoned claims. No unsourced assertions.
    This is the integrity substrate that makes the document trustworthy.
@@ -203,14 +260,17 @@ divergent one: M5 sequencing (lean toward "split it — shapes early, machinery 
 ## 7. Open practical items for Nasser
 
 - **Git:** Topos needs its own `git init` (it's currently untracked in the `~/Projects`
-  parent repo). Three options were offered last session: (1) `git init` inside Topos + add
-  to parent's `.gitignore` [recommended], (2) leave untracked, (3) tell me what the parent
-  repo is for. Awaiting your call. No git changes will be made without your say-so.
+  parent repo). Three options were offered: (1) `git init` inside Topos + add to parent's
+  `.gitignore` [recommended], (2) leave untracked, (3) tell me what the parent repo is for.
+  Awaiting your call. No git changes will be made without your say-so.
 - **The Medium piece on Kuzu** ("I Analyzed 163K Lines of Kuzu's Codebase — Here's Why
   Apple Wanted It") returned HTTP 403 to my fetch. It likely has the deepest public
   architectural analysis of Kuzu's storage engine. Worth your reading directly before M4
   is finalized.
-- **The strategic fork (§4.2)** is yours to adjudicate. It blocks spec finalization.
+- **The strategic fork (§4.2)** is RESOLVED (build as RLB kernel).
+- **The competitor survey** is DONE. The only remaining input to the spec is Fable's
+  empirical RLB argument (paradox-compression + deferred-HyperEdge) — pull that from RLB
+  directly when writing the spec opener.
 
 ---
 

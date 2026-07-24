@@ -49,7 +49,9 @@ algorithms. See `docs/DECISIONS.md` §6 and `AGENTS.md` §9.
 
 | Document | Purpose |
 |---|---|
+| [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | **The consolidated spec — under GPT+Claude review.** Opens with the verified RLB empirical case, incorporates the 4-primitive contract, GPT's 5-layer architecture, the resolved open questions, and the M0–M8 roadmap with Neo4j GDS verification + falsifiable M5. §12 lists the open questions for reviewers. |
 | [`docs/BASE_INVESTIGATION.md`](docs/BASE_INVESTIGATION.md) | Source-verified analysis of 10 libraries + the proposed storage contract + roadmap skeleton. The artifact Fable and GPT enhance into the final spec. |
+| [`docs/AGENT_MEMORY_COMPETITORS.md`](docs/AGENT_MEMORY_COMPETITORS.md) | Source-verified survey of the four systems competing for the agent-memory niche (Zep/Graphiti, mem0, Letta, Cognee) — answers "did the field reject hypergraphs, or never consider them?" Includes the n-ary-DB capability matrix (TypeDB/TigerGraph) and hypergraph-research-prototype preemption. |
 
 ## Provenance and integrity
 

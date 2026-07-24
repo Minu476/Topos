@@ -143,11 +143,14 @@ across sessions and is authoritative when FSDE is cold.
 │   └── mcp_config.json               # FSDE MCP wiring (mirror)
 └── docs/
     ├── BASE_INVESTIGATION.md         # the 10-library source-verified analysis + contract
+    ├── AGENT_MEMORY_COMPETITORS.md   # the Zep/mem0/Letta/Cognee survey + n-ary-DB matrix
+    ├── SPECIFICATION.md              # the consolidated spec — under GPT+Claude review
     ├── DECISIONS.md                  # what reviewers locked vs. left open
     ├── SESSION_HANDOFF.md            # carry-on context — READ FIRST
     └── reactions/
-        ├── 01_GPT_first-reaction.md       # GPT's review
-        └── 02_Fable_first-reaction.md      # Fable's review
+        ├── 01_GPT_first-reaction.md       # GPT's first review
+        ├── 02_Fable_first-reaction.md      # Fable's first review
+        └── 03_*.md                          # (pending) GPT+Claude review of the SPECIFICATION
 ```
 
 **No code yet.** The first code milestone is M0 (storage kernel) — but do not start M0 until:
@@ -191,7 +194,12 @@ What this means concretely:
   statement. Downgraded in §1 of the investigation per reviewer Fable.
 - **Topos is not yet a git repository.** It sits in the working tree of the parent
   `~/Projects` repo, untracked. First commit / `git init` is Nasser's to make.
-- **The investigation did not survey agent-memory competitors** (Zep/mem0/Letta/Cognee).
-  This is the biggest gap and the next document to write.
+- **The specification phase is complete.** `docs/SPECIFICATION.md` is **approved by both GPT and
+  Claude** for implementation (GPT: 9–10/10, "no further changes requested"; see
+  `docs/reactions/03–05`). The next phase is **M0 (storage kernel)** — see `SPECIFICATION.md §6`.
+  Two open questions (Q1: the "paradox-compression" citation; Q7: Handle generation-bits) most
+  affect M0 code shape and should be resolved before/as M0 starts; the rest defer to their
+  milestone. **Do not keep polishing the spec** — both reviewers warn against the
+  overengineering risk.
 - **RLB is now in scope** (build-as-RLB-kernel decision). The earlier "RLB stays untouched"
   framing in older docs is superseded — see `docs/DECISIONS.md` §6.
