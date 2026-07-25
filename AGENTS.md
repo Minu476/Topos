@@ -16,17 +16,21 @@ memory, and provenance.
 > weights.** In category theory, a *topos* is a deep theory of structured contexts — a fitting
 > ambition for a foundational substrate that many domains build on.
 
-**Current status: base-investigation phase.** No code yet, by design. The base investigation
-(`docs/BASE_INVESTIGATION.md`) is the input to the final specification, which Fable and GPT
-are reviewing. See `docs/SESSION_HANDOFF.md` for the precise carry-on state.
+**Current status (2026-07-24): M0–M6 implemented and tested; M7 (spectral) deferred by design,
+M8 (OSS polish) intentionally paused.** The spec was approved (GPT + Claude passes,
+`docs/reactions/`) before implementation started. 173 tests pass across the kernel,
+persistence, sample, and GDS-parity suites; Topos is a live `ProjectReference` in
+Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`), not just a design target — RLB's
+346-test suite, including live Neo4j round-trips, passes against it. Nasser is dogfooding it via
+RLB before resuming the M8 roadmap — see `docs/SESSION_HANDOFF.md` for the precise carry-on
+state and why M8 is paused rather than in progress.
 
-The intended eventual namespace is `Topos.Hypergraph` — *subject to change* if GPT's deeper
-reframe ("Topos is an incidence model with hypergraph as one projection") is adopted; see
-`docs/DECISIONS.md`.
+The namespace is `Topos.Hypergraph`, locked for M0–M3 per `docs/DECISIONS.md` §4.1 — the deeper
+"incidence model" reframe stays a reach goal, not adopted.
 
 ---
 
-## 2. The thesis Topos exists to serve (and the harder question still open)
+## 2. The thesis Topos exists to serve (and the harder question, now answered)
 
 The age of AI **changed the optimization criteria** for a graph library — it did not invent a
 new kind of graph. Historical graph libraries optimized for shortest paths, centrality,
@@ -35,21 +39,28 @@ for incremental updates, provenance, explainability, retrieval, symbolic+vector 
 stable identities, partial activation, long-lived mutable knowledge. These are genuinely
 different workloads, and no hypergraph library in any language is built for the second set.
 
-**The harder question still open** (see `docs/BASE_INVESTIGATION.md` §8.3): the systems
+**The harder question, now answered** (`docs/AGENT_MEMORY_COMPETITORS.md`, closed): the systems
 actually competing for the "AI agent memory substrate" niche (Zep/Graphiti, mem0, Letta,
 Cognee) are *not* hypergraph libraries — they chose binary property graphs or temporal binary
-graphs. So the real feasibility question is *"is the gap unfilled because nobody built it, or
-because the field tried hypergraphs and decided binary was good enough?"* That requires a
-separate survey (`docs/AGENT_MEMORY_COMPETITORS.md` — **not yet written; this is the next
-document**) plus the empirical counter-argument from RLB's paradox-compression finding.
+graphs. The survey found the field never seriously tried hypergraphs and rejected them (zero
+evidence either way in any of the four codebases); binary is good enough for the dominant 80%
+of workloads, but costs real expressiveness in exactly three places (n-ary facts, cell-level
+properties, reified facts-as-entities) that map onto Topos's primitives. See
+`docs/AGENT_MEMORY_COMPETITORS.md` §7 for the full answer. (The "paradox-compression" empirical
+counter-argument referenced in earlier handoffs turned out to be from an unrelated project — see
+`docs/PARADOX_COMPRESSION_SEARCH.md`; the spec's §1.2 Condition-aggregation argument stands on
+its own instead.)
 
 ---
 
-## 3. The frozen storage contract (proposed, under review)
+## 3. The storage contract (implemented, M0–M6)
 
 The four-primitive + two-invariant shape, synthesized from source-level reading of 10
-libraries. This is a *proposal* for the spec — not a final decision — but it survived every
-attempt to add a fifth primitive, which is a real signal.
+libraries, survived every attempt to add a fifth primitive during spec review — and is now
+built and tested (`src/Topos.Hypergraph/`). The concurrency model was benchmark-corrected
+during M0 implementation (copy-on-write → `ReaderWriterLockSlim`-per-pool, after COW measured
+O(N²) on hub vertices) — see `docs/M0_BENCHMARK_RESULTS_2026-07-24.md` for the full data and
+`docs/DECISIONS.md` for what stayed locked vs. what changed.
 
 ```
 PRIMITIVES (4):
@@ -71,22 +82,26 @@ which parts of the contract the two reviewers locked vs. left open.
 
 ---
 
-## 4. Critical relationships (strategic fork RESOLVED — build as RLB's kernel first)
+## 4. Critical relationships (build-as-RLB-kernel decision, now live)
 
 **Decision (Nasser, 2026-07-23): build Topos as RLB's kernel first**, with standalone-library
 ambition as a falsifiable M5 milestone (a non-RLB second consumer). See `docs/DECISIONS.md` §6.
+Both halves of this are done, not just planned:
 
-What this means concretely:
-- **Rich-Learning-Base** (`~/Projects/Rich-Learning-Base`) — **now in scope as the first
-  consumer.** Topos becomes a `ProjectReference` in RLB's V2 csproj during M0–M4. RLB's
-  337-test suite becomes the first real validation. **RLB is touched** during this build —
-  unlike the earlier decoupled plan.
-- **FSDE** (`~/Projects/FSDE`) — still decoupled for now. May adopt Topos later.
+- **Rich-Learning-Base** (`~/Projects/Rich-Learning-Base`) — **first consumer, live.** Topos
+  is a `ProjectReference` in RLB's V2 csproj — see
+  `src/RichLearning.V2/Learning/ToposGraphProjection.cs`, which does hyperedge-aware
+  pathfinding over a Topos `HypergraphKernel` built from RLB's landmarks/transitions/
+  hyperedges. RLB's 346-test suite, including live Neo4j round-trips, passes against it. A
+  small standalone demo also exists in RLB: `tools/ToposHyperedgeDemo` (`dotnet run --project
+  tools/ToposHyperedgeDemo`) — side-by-side comparison of hyperedge-blind vs. Topos-backed
+  pathfinding, useful for a quick hands-on check that the integration actually does something.
+- **FSDE** (`~/Projects/FSDE`) — still decoupled. May adopt Topos later.
 - **Dependency direction preserved:** Topos still references nothing upstream (no RLB types
   leak into Topos); RLB references Topos. The kernel stays clean.
-- **M5 exit criterion is now a non-RLB second consumer** (e.g. a minimal chat-agent memory
-  demo). If the kernel can't serve a consumer it wasn't designed around, the
-  "standalone library" claim isn't yet true — better to learn at M5 than M8.
+- **M5 exit criterion — done.** The non-RLB second consumer is `samples/Topos.Samples.ChatMemory`
+  in this repo. The kernel served a consumer it wasn't designed around; the domain-agnosticity
+  claim has a falsifiable test behind it now, not just an intention.
 
 ---
 
@@ -132,30 +147,45 @@ across sessions and is authoritative when FSDE is cold.
 
 ---
 
-## 8. The repository layout (as of session start)
+## 8. The repository layout (2026-07-24 — M0–M6 implemented)
 
 ```
-~/Projects/Topos/
-├── README.md                         # public-facing intro
+~/Projects/Topos/                     # github.com/Minu476/Topos (private)
+├── README.md                         # public-facing intro — kept in sync with actual status
 ├── AGENTS.md                         # this file
-├── .mcp.json                         # FSDE MCP wiring
-├── .agents/
-│   └── mcp_config.json               # FSDE MCP wiring (mirror)
+├── Topos.sln
+├── src/
+│   ├── Topos.Hypergraph/             # the kernel: Handle, Vertex, Incidence, PropertyKey<T>,
+│   │                                  # IHypergraphQuery, traversal, reification, views/set
+│   │                                  # algebra, embeddings/learnable edges/provenance,
+│   │                                  # s-walk/label-propagation/triangle-count/modularity
+│   └── Topos.Hypergraph.Persistence/ # tiered LRU+snapshot persistence (packaging split at M4)
+├── tests/
+│   ├── Topos.Hypergraph.Tests/           # kernel unit + fuzz + concurrency + stress tests
+│   ├── Topos.Hypergraph.Persistence.Tests/
+│   └── Topos.Tests.GdsOracle/             # Neo4j GDS-parity oracle — see docs/GDS_ORACLE_SETUP.md
+├── samples/
+│   └── Topos.Samples.ChatMemory(.Tests)/  # M5's non-RLB second consumer (falsifiability gate)
+├── benchmarks/
+│   └── Topos.Hypergraph.Benchmarks/  # BenchmarkDotNet suite — see docs/M0_BENCHMARK_RESULTS_*.md
 └── docs/
     ├── BASE_INVESTIGATION.md         # the 10-library source-verified analysis + contract
     ├── AGENT_MEMORY_COMPETITORS.md   # the Zep/mem0/Letta/Cognee survey + n-ary-DB matrix
-    ├── SPECIFICATION.md              # the consolidated spec — under GPT+Claude review
+    ├── SPECIFICATION.md              # the consolidated spec — approved by GPT + Claude
     ├── DECISIONS.md                  # what reviewers locked vs. left open
     ├── SESSION_HANDOFF.md            # carry-on context — READ FIRST
-    └── reactions/
-        ├── 01_GPT_first-reaction.md       # GPT's first review
-        ├── 02_Fable_first-reaction.md      # Fable's first review
-        └── 03_*.md                          # (pending) GPT+Claude review of the SPECIFICATION
+    ├── M0_BENCHMARK_RESULTS_2026-07-24.md  # measured benchmark gate + the COW→RWLS correction
+    ├── GDS_ORACLE_SETUP.md           # GDS-parity Docker setup + the Neo4j credential-isolation
+    │                                  # writeup (host Neo4j instance rebind/rotation, unrelated
+    │                                  # to Topos itself but relevant if you touch that instance)
+    ├── PARADOX_COMPRESSION_SEARCH.md # resolves spec §12 Q1 — the citation was from an unrelated project
+    ├── GDS_ALGORITHM_TIERS.md        # resolves spec §12 Q9 — GDS Community/Enterprise verification
+    └── reactions/                    # verbatim GPT/Claude review rounds
 ```
 
-**No code yet.** The first code milestone is M0 (storage kernel) — but do not start M0 until:
-(a) the strategic fork in §4 is adjudicated, and (b) the agent-memory competitor survey
-(`docs/AGENT_MEMORY_COMPETITORS.md`) is written. See `docs/SESSION_HANDOFF.md`.
+**M0–M6 are implemented and tested** (173 tests). **M7 is deferred by design** (spectral
+machinery — no domain forces it yet). **M8 (OSS polish) is intentionally paused**, not
+in-progress — see `docs/SESSION_HANDOFF.md` §4.1 for why and what resumes it.
 
 ---
 
@@ -181,25 +211,43 @@ What this means concretely:
 - Neo4j is already in Nasser's stack (RLB's `Neo4jGraphMemory`, FSDE). No new infrastructure
   — the GDS plugin install is the only addition. Test harness: a `Topos.Tests.GdsOracle`
   project/class added during M1.
+- **This is implemented and running, not just planned.** `tests/Topos.Tests.GdsOracle` runs
+  against an isolated, disposable Docker container (`topos-gds-oracle`, Community edition, own
+  credentials, never a developer's real Neo4j instance) — see `docs/GDS_ORACLE_SETUP.md` for
+  setup and the one real bug this harness already caught (a directed-vs-undirected projection
+  mismatch in `GetBfs`). GDS per-algorithm Community/Enterprise tier verification (spec §12
+  Q9) is resolved — see `docs/GDS_ALGORITHM_TIERS.md`.
 
 ---
 
 ## 10. Honest caveats
 
-- **No code, no tests, no benchmarks yet.** All performance claims in the investigation are
-  inferred from storage representation, not measured. M0's exit criterion requires *measured*
-  benchmarks (added per reviewer feedback).
+- **Code, tests, and benchmarks all exist now.** 173 tests pass (kernel, persistence, sample,
+  GDS-parity); the M0 concurrency model was corrected from measured benchmark data during
+  implementation, not left as inference — see `docs/M0_BENCHMARK_RESULTS_2026-07-24.md`. Don't
+  trust older docs (or your own memory of them) that describe Topos as pre-code.
 - **The Apple/Kuzu acquisition is weak-positive signal, not thesis validation.** Apple has
   not stated the motive; the "on-device AI" angle is one analyst's read, not Apple's
-  statement. Downgraded in §1 of the investigation per reviewer Fable.
-- **Topos is not yet a git repository.** It sits in the working tree of the parent
-  `~/Projects` repo, untracked. First commit / `git init` is Nasser's to make.
-- **The specification phase is complete.** `docs/SPECIFICATION.md` is **approved by both GPT and
-  Claude** for implementation (GPT: 9–10/10, "no further changes requested"; see
-  `docs/reactions/03–05`). The next phase is **M0 (storage kernel)** — see `SPECIFICATION.md §6`.
-  Two open questions (Q1: the "paradox-compression" citation; Q7: Handle generation-bits) most
-  affect M0 code shape and should be resolved before/as M0 starts; the rest defer to their
-  milestone. **Do not keep polishing the spec** — both reviewers warn against the
-  overengineering risk.
-- **RLB is now in scope** (build-as-RLB-kernel decision). The earlier "RLB stays untouched"
-  framing in older docs is superseded — see `docs/DECISIONS.md` §6.
+  statement. Downgraded in §1 of the investigation per reviewer Fable — this framing hasn't
+  changed and doesn't need revisiting.
+- **Topos is a git repository, pushed to GitHub** (`github.com/Minu476/Topos`, private).
+- **The spec's residual open questions**: Q1 (paradox-compression citation) and Q7 (Handle
+  generation-bits) are resolved — see `docs/PARADOX_COMPRESSION_SEARCH.md` and the `Generation`
+  field already in `Handle.cs` (option (a), include-from-M0, as the spec leaned). Q9 (GDS
+  algorithm tier) is resolved — see `docs/GDS_ALGORITHM_TIERS.md`. **Q2 (identity: hypergraph
+  vs. incidence model) and Q10 (capability partition) are still genuinely open** — they're
+  Nasser's calls, not blockers, and nothing forces resolving them before M8.
+- **RLB is in scope and the integration is live**, not just decided — see §4. The earlier "RLB
+  stays untouched" framing in the oldest docs is fully superseded.
+- **M8 is paused deliberately, not stalled.** Nasser chose to use Topos hands-on via RLB (and
+  is weighing a possible future NexusVerifier angle — a Lean proof-search hypergraph, discussed
+  2026-07-24 but not started) before resuming the OSS-polish milestone. If you're picking up a
+  fresh session and M8 still isn't moving, that's expected — check with Nasser before assuming
+  it's blocked or forgotten.
+- **A separate incident worth knowing about if you ever touch the shared Neo4j Desktop
+  instance** (not the GDS-oracle Docker container, a different one other local projects share):
+  its credential was rotated 2026-07-24 after being typed into a chat session, and now lives in
+  macOS Keychain (`security` service `neo4j-desktop`), resolved via `~/.secrets` for
+  shell-based tools. Full writeup in `docs/GDS_ORACLE_SETUP.md`. Not a Topos-specific concern,
+  but relevant if you're ever debugging why a Neo4j connection on this machine behaves
+  differently than a doc describes.
