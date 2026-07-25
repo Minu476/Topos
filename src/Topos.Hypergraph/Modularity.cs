@@ -11,6 +11,21 @@ namespace Topos.Hypergraph;
 /// </summary>
 public static class Modularity
 {
+    /// <summary>
+    /// Newman's modularity Q for <paramref name="communities"/> over <paramref name="graph"/>'s
+    /// bipartite adjacency. Returns 0.0 for an edgeless graph.
+    ///
+    /// <b>Vertices missing from <paramref name="communities"/> are handled two different ways —
+    /// worth knowing if your partition doesn't cover every vertex.</b> For the internal-edges
+    /// numerator, an edge counts as internal only if *both* endpoints have an explicit entry and
+    /// they match — an edge touching an uncommunitied vertex is simply excluded, never counted as
+    /// internal. For the degree sum-of-squares term, uncommunitied vertices are instead grouped
+    /// together into one synthetic community (key <c>-1</c>) and *do* contribute to that penalty
+    /// term. The net effect: leaving vertices out of <paramref name="communities"/> can only push
+    /// Q down (their degree penalizes the score but their edges never count toward it), it never
+    /// pushes it up. For a meaningful score, pass a <paramref name="communities"/> that covers
+    /// every vertex <paramref name="graph"/> actually uses.
+    /// </summary>
     public static double Compute(IHypergraphQuery graph, IReadOnlyDictionary<Handle, int> communities)
     {
         var edges = DistinctEdges(graph).ToList();

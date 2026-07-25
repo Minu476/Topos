@@ -16,8 +16,14 @@ namespace Topos.Hypergraph;
 ///
 /// Not thread-safe on its own — the owning pool applies the spec §3.4 per-pool lock
 /// (<see cref="PropertyPool{T}"/>).
+///
+/// <b>Internal, not public — locked M8.</b> Matches the convention of its sibling plumbing
+/// (<see cref="PropertyPool{T}"/>, <c>IncidenceIndex</c>): the kernel's public surface is
+/// <see cref="IHypergraphQuery"/> and <see cref="HypergraphKernel"/>, not its storage internals.
+/// Test and benchmark projects that need direct access do so via
+/// <c>[InternalsVisibleTo]</c> (see <c>Topos.Hypergraph.csproj</c>), not public exposure.
 /// </summary>
-public sealed class SparseSet<T>
+internal sealed class SparseSet<T>
 {
     private const uint Tombstone = uint.MaxValue;
 

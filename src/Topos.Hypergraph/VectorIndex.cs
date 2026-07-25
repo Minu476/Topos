@@ -19,7 +19,14 @@ namespace Topos.Hypergraph;
 /// </summary>
 public sealed class VectorIndex(HypergraphKernel kernel, PropertyKey<float[]> embeddingKey)
 {
-    /// <summary>The <paramref name="k"/> nearest vertices to <paramref name="query"/> by squared Euclidean distance, ascending (nearest first).</summary>
+    /// <summary>
+    /// The <paramref name="k"/> nearest vertices to <paramref name="query"/> by squared Euclidean
+    /// distance, ascending (nearest first). Throws <see cref="ArgumentOutOfRangeException"/> if
+    /// <paramref name="k"/> isn't positive, and <see cref="ArgumentException"/> if
+    /// <paramref name="query"/>'s length doesn't match a stored embedding's length — this class
+    /// doesn't pad/truncate mismatched dimensions, since that would silently produce a meaningless
+    /// distance rather than surface the caller's error.
+    /// </summary>
     public IReadOnlyList<(Handle Handle, float Distance)> NearestNeighbors(ReadOnlySpan<float> query, int k)
     {
         if (k <= 0) throw new ArgumentOutOfRangeException(nameof(k), "k must be positive.");

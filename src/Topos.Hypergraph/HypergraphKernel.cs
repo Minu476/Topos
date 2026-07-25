@@ -48,6 +48,12 @@ public sealed class HypergraphKernel : IHypergraphQuery
 
     // ── Vertices ─────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Allocates a new vertex with a fresh, never-reused <see cref="Handle"/> and
+    /// <see cref="VertexStatus.Active"/> status. This is the only path that keeps the allocator's
+    /// monotonic-never-reused guarantee (Invariant 1) intact — see <see cref="RestoreVertex"/> for
+    /// the one sanctioned exception (snapshot reload).
+    /// </summary>
     public Handle CreateVertex(VertexRoles roles = VertexRoles.None)
     {
         var handle = _allocator.Next();
@@ -93,6 +99,10 @@ public sealed class HypergraphKernel : IHypergraphQuery
     /// </summary>
     public void SetDormant(Handle handle) => UpdateStatus(handle, VertexStatus.Dormant);
 
+    /// <summary>
+    /// Reverses <see cref="SetDormant"/> — sets a vertex back to <see cref="VertexStatus.Active"/>.
+    /// A no-op if <paramref name="handle"/> is unknown or already active.
+    /// </summary>
     public void Reactivate(Handle handle) => UpdateStatus(handle, VertexStatus.Active);
 
     private void UpdateStatus(Handle handle, VertexStatus status)
@@ -131,14 +141,25 @@ public sealed class HypergraphKernel : IHypergraphQuery
 
     // ── Properties ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Resolves the stable <see cref="PropertyKey{T}"/> for <paramref name="name"/>, assigning a
+    /// registry slot on first use (<see cref="PropertyRegistry"/>). Call once and cache the
+    /// result — repeated resolution is a dictionary lookup, not free, and every
+    /// <see cref="SetProperty{T}"/>/<see cref="TryGetProperty{T}"/>/<see cref="RemoveProperty{T}"/>
+    /// call needs the same <typeparamref name="T"/> for a given <paramref name="name"/> (see
+    /// <see cref="PropertyRegistry"/>'s doc for what happens if you don't).
+    /// </summary>
     public PropertyKey<T> ResolveProperty<T>(string name) => _properties.Resolve<T>(name);
 
+    /// <summary>Sets <paramref name="key"/>'s value for <paramref name="handle"/>, creating the property pool on first use. No existence check on <paramref name="handle"/> — properties on a not-yet-created or dormant Handle are legal (provenance edges always resolve, Invariant 1).</summary>
     public void SetProperty<T>(PropertyKey<T> key, Handle handle, T value) =>
         GetPool<T>(key).Set(handle, value);
 
+    /// <summary>Resolves <paramref name="value"/> for <paramref name="key"/> on <paramref name="handle"/>. Returns <c>false</c> — with <paramref name="value"/> left as <c>default(T)</c> — if no value was ever set for this (key, handle) pair.</summary>
     public bool TryGetProperty<T>(PropertyKey<T> key, Handle handle, out T value) =>
         GetPool<T>(key).TryGet(handle, out value);
 
+    /// <summary>Removes <paramref name="key"/>'s value for <paramref name="handle"/>, if any. Returns whether a value was actually present to remove.</summary>
     public bool RemoveProperty<T>(PropertyKey<T> key, Handle handle) =>
         GetPool<T>(key).Remove(handle);
 

@@ -68,8 +68,9 @@ Two things worth internalizing before anything else:
     └── reactions/                            # verbatim GPT/Claude review rounds
 ```
 
-176 tests pass across the kernel, persistence, sample, and GDS-parity suites (up from 173 as of
-2026-07-25, with 3 new `Handle.Invalid` regression tests). Build:
+177 tests pass across the kernel, persistence, sample, and GDS-parity suites (up from 173 before
+2026-07-25's two M8 passes — 3 new `Handle.Invalid` regression tests, 1 new `SWalk.Reachable`
+eager-throw regression test). Build:
 `dotnet build Topos.sln`. Test: `dotnet test Topos.sln`.
 
 ---
@@ -164,6 +165,27 @@ calls via explicit questions before any code was touched (fix the doc for cell p
 `Incidence.cs`, `Handle.cs`, `HypergraphKernel.cs`, `FilteredView.cs`, `UnionView.cs`,
 `IHypergraphQuery.cs`, new `docs/ROLE_CONVENTIONS.md`, new regression tests in
 `HypergraphKernelTests.cs`/`ViewsTests.cs`, plus this handoff, `AGENTS.md`, and `DECISIONS.md`.
+
+**Second pass, same session:** asked to decide what's next for M8, so scoped and ran a broader
+read-only audit (forked agent) of the rest of the public surface, then resolved it — see
+`docs/DECISIONS.md`'s second 2026-07-25 entry. Two real API-tightening decisions (again via
+explicit questions): `PropertyKey<T>`'s constructor is now `internal` (was public, could
+construct colliding-Id-different-T keys), and `SparseSet<T>` is now `internal` (was the one
+outlier public storage-plumbing type) with `InternalsVisibleTo` added for
+`Topos.Hypergraph.Tests`/`Topos.Hypergraph.Benchmarks` — the repo's first use of
+`InternalsVisibleTo`. Also fixed a real bug found along the way, not in the original audit:
+`SWalk.Reachable`'s argument-validation was deferred to enumeration (a bare iterator method
+footgun) instead of throwing eagerly like `SWalk.Distance` — now eager, with a regression test.
+Plus doc-only fills on `IHypergraphQuery`, `HypergraphKernel`, `HypergraphViews`,
+`LearnableEdge`, `VectorIndex`, `Modularity`. Also decided (not asked, since neither had a
+forcing consumer): HIF interchange and a docs site are deferred, same discipline as M7's
+deferral; package version strings corrected from stale `0.1.0-m0`/`0.1.0-m4` to `0.1.0-m8`.
+177 tests pass (up from 173 at the start of this session).
+
+**M8 is more done than the "in progress" framing above suggests but still not fully closed** —
+this was two API-audit passes (a findings-driven one and a broader sweep), not an exhaustive
+line-by-line review of literally every public member. If a fresh session wants to declare M8
+closed outright, that's a reasonable option to raise with Nasser rather than assume.
 
 ---
 

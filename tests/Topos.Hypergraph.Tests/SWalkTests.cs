@@ -91,4 +91,17 @@ public class SWalkTests
         Assert.Throws<ArgumentOutOfRangeException>(() => SWalk.Distance(kernel, h, h, s: 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => SWalk.Reachable(kernel, h, s: 0).ToList());
     }
+
+    [Fact]
+    public void Reachable_InvalidS_ThrowsEagerly_NotOnlyOnEnumeration()
+    {
+        // M8: Reachable's guard clause must fire on the call itself, not deferred to the first
+        // .ToList()/foreach -- a bare `yield return` method's checks only run on enumeration,
+        // which would silently swallow this error for a caller who builds the sequence without
+        // immediately consuming it. Calling without enumerating pins the eager-throw contract.
+        var kernel = new HypergraphKernel();
+        var h = kernel.CreateVertex();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => SWalk.Reachable(kernel, h, s: 0));
+    }
 }

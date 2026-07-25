@@ -64,6 +64,16 @@ public interface IHypergraphQuery
     /// <summary>Every vertex Handle, including dormant ones. A snapshot, not a live view.</summary>
     IReadOnlyList<Handle> VertexHandles();
 
+    /// <summary>
+    /// Resolves <paramref name="vertex"/> for <paramref name="handle"/>, including dormant ones
+    /// (Invariant 1). Returns <c>false</c> if <paramref name="handle"/> was never allocated by
+    /// this source. On failure, <paramref name="vertex"/>'s <see cref="Vertex.Handle"/> is
+    /// <see cref="Handle.Invalid"/> (locked M8 — see <c>docs/DECISIONS.md</c>'s 2026-07-25 entry)
+    /// rather than C#'s <c>default(Handle)</c>, so a caller that skips checking the returned
+    /// <c>bool</c> can't mistake the result for a real vertex #0. Always check the <c>bool</c>
+    /// regardless — <see cref="Handle.IsValid"/> on the out value is defense-in-depth, not the
+    /// primary contract.
+    /// </summary>
     bool TryGetVertex(Handle handle, out Vertex vertex);
 
     /// <summary>Which hyperedges this vertex is a member of — the distinct Source handles across its incidence memberships.</summary>
@@ -83,6 +93,13 @@ public interface IHypergraphQuery
 
     bool ContainsVertex(Handle handle) => TryGetVertex(handle, out _);
 
+    /// <summary>
+    /// <see cref="TryGetVertex"/>'s throwing counterpart — for call sites where a missing Handle
+    /// is a genuine caller bug, not an expected outcome to branch on. Throws
+    /// <see cref="KeyNotFoundException"/> if <paramref name="handle"/> was never allocated by
+    /// this source; prefer <see cref="TryGetVertex"/> when a missing Handle is a normal,
+    /// expected case rather than a bug.
+    /// </summary>
     Vertex GetVertex(Handle handle) =>
         TryGetVertex(handle, out var v) ? v : throw new KeyNotFoundException($"No vertex for {handle}");
 

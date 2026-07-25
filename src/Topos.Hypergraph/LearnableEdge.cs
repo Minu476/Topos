@@ -14,7 +14,13 @@ namespace Topos.Hypergraph;
 /// </summary>
 public readonly record struct LearnableEdge(float[] Theta)
 {
-    /// <summary>v = sigmoid(theta · [1, features...]) — theta[0] is the bias term.</summary>
+    /// <summary>
+    /// v = sigmoid(theta · [1, features...]) — theta[0] is the bias term. Throws
+    /// <see cref="ArgumentException"/> if <paramref name="features"/>'s length doesn't match this
+    /// edge's <see cref="Theta"/> length minus one (the bias slot) — a caller error, not a
+    /// runtime condition to handle gracefully; the feature vector shape is fixed once an edge's
+    /// Theta is created.
+    /// </summary>
     public float Evaluate(ReadOnlySpan<float> features)
     {
         if (features.Length != Theta.Length - 1)

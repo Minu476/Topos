@@ -346,6 +346,96 @@ In priority order:
   existing public method signature — the `Handle.Invalid` change is a same-signature output-value
   change on an already-failing path.
 
+### 2026-07-25 — M8 SCOPE: HIF interchange and docs site deferred; package versions corrected
+
+- **Decider:** Opus 5, on request from Nasser to decide what's next for M8.
+- **Question:** Spec §6's M8 row lists four items: API stability, benchmark suite, HIF
+  interchange support (port from Julia/HyperNetX), and a docs site, exiting on "OSS-ready." The
+  NexusVerifier-findings slice (above) covered API stability. What's the sequencing for the rest?
+- **Decision:**
+  - **Benchmark suite: already satisfied**, no action — `benchmarks/Topos.Hypergraph.Benchmarks`
+    (BenchmarkDotNet) has existed since M0 and produced the measured data in
+    `docs/M0_BENCHMARK_RESULTS_2026-07-24.md`.
+  - **API stability: continues** with a broader audit of the public surface beyond the six
+    NexusVerifier findings (in progress as of this entry; see the next log entry once it lands).
+  - **HIF interchange (port from Julia/HyperNetX): deferred, not dropped.** No consumer —
+    RLB, ChatMemory, or NexusVerifier — has ever needed interchange with another hypergraph
+    library's file format. Building it now would be exactly the speculative-generality this
+    project's own discipline warns against elsewhere (the same reasoning that kept M7 spectral
+    machinery deferred: "three voices agree... nothing since has forced it"). Re-entry condition:
+    a real consumer needs to import/export hypergraph data across systems, or Nasser decides
+    ecosystem interop is a deliberate positioning bet independent of any single consumer.
+  - **Docs site: deferred.** A public docs site is a consequence of an OSS-release-timing
+    decision (the repo is currently private — `github.com/Minu476/Topos`), not a standalone
+    engineering task. Building one before that timing is decided front-runs a decision that isn't
+    made yet. Re-entry condition: Nasser decides to make the repo public / publish to NuGet.
+  - **Package version strings corrected.** Both `Topos.Hypergraph.csproj` and
+    `Topos.Hypergraph.Persistence.csproj` still said `0.1.0-m0` / `0.1.0-m4` despite M0–M6 being
+    fully shipped — bumped both to `0.1.0-m8` (same versioning convention: pre-1.0, milestone
+    suffix tracks current state, not a semver promise). `Topos.Hypergraph.csproj`'s `Description`
+    also still said "M0: storage kernel" — corrected to describe the actual current capability
+    (four primitives, ~40 algorithms, reification, views, embeddings, learnable edges).
+  - **NuGet-publish readiness (LICENSE, `PackageLicenseExpression`, `RepositoryUrl`, actually
+    publishing) is explicitly NOT decided here** — license choice is Nasser's call, not an
+    engineering default to guess at. Flagged, not actioned.
+- **Rationale:** Same "build what's forced, defer what isn't" discipline this project has applied
+  consistently since the investigation phase (M7's deferral, the reification-depth-cap decision
+  in §1.4, the no-registry role-byte decision above). Two of M8's four spec items had a live
+  forcing function (a third real consumer just exercised the public API); two didn't.
+- **What it changes:** `src/Topos.Hypergraph/Topos.Hypergraph.csproj`,
+  `src/Topos.Hypergraph.Persistence/Topos.Hypergraph.Persistence.csproj` (version + description).
+  No functional code changes. HIF interchange and the docs site are not scheduled; revisit only
+  under the stated re-entry conditions.
+
+### 2026-07-25 — M8 API AUDIT: broader public-surface findings resolved
+
+- **Decider:** Nasser (via AskUserQuestion on the two breaking-change items), executed by Opus 5.
+- **Question:** A read-only audit of the rest of `src/Topos.Hypergraph`'s and
+  `src/Topos.Hypergraph.Persistence`'s public surface (beyond the six NexusVerifier findings
+  above) turned up two design decisions and five mechanical doc/consistency gaps. What to do
+  with each?
+- **Decision:**
+  1. **`PropertyKey<T>`'s constructor is now `internal`, not public.** The public primary
+     constructor let a caller construct two keys sharing an `Id` but backed by different `T`s
+     (e.g. `new PropertyKey<int>("foo", 5)` vs. `new PropertyKey<string>("foo", 5)`), which
+     `PropertyRegistry`'s own doc already flagged as throwing `InvalidCastException` on first pool
+     access. A repo-wide grep confirmed only `PropertyRegistry.Resolve<T>` legitimately
+     constructs one. Closed now, before any external consumer could depend on the public ctor.
+  2. **`SparseSet<T>` is now `internal`, matching `PropertyPool<T>`/`IncidenceIndex`.** It was the
+     one outlier storage-plumbing type left public with no documented reason. Added
+     `InternalsVisibleTo` for `Topos.Hypergraph.Tests` and `Topos.Hypergraph.Benchmarks` in
+     `Topos.Hypergraph.csproj` (the repo's first use of `InternalsVisibleTo`) since both reference
+     it directly for white-box tests/benchmarks.
+  3. **`SWalk.Reachable` now throws its `ArgumentOutOfRangeException` eagerly, not deferred to
+     enumeration.** Found while documenting exception behavior, not in the original audit:
+     `Reachable` was a bare `yield return` iterator with a guard clause before the first yield —
+     C# doesn't run that check until the caller enumerates (`.ToList()`/`foreach`), so
+     `SWalk.Reachable(graph, start, s: 0)` alone didn't throw, only consuming it did. Split into
+     an eager-validating wrapper calling a private iterator core, matching `SWalk.Distance`'s
+     already-eager behavior. New regression test pins the eager-throw contract without
+     enumerating.
+  4. **Missing XML docs filled in**, no behavior change: `IHypergraphQuery.TryGetVertex` and
+     `GetVertex` (including their `Handle.Invalid`/`KeyNotFoundException` contracts, which were
+     documented elsewhere but not at the primitive's own declaration), `HypergraphKernel`'s
+     `CreateVertex`/`ResolveProperty`/`SetProperty`/`TryGetProperty`/`RemoveProperty`/`Reactivate`,
+     and `HypergraphViews`' `Subgraph`/`Mask`/`Union`/`Intersect` (previously only `Difference`
+     had a doc).
+  5. **Exception behavior documented** on `LearnableEdge.Evaluate`, `VectorIndex.NearestNeighbors`,
+     and `SWalk.Distance`/`Reachable` — following `PropertyRegistry`'s existing pattern of calling
+     out the risk in prose rather than leaving it to the throw's own message text.
+  6. **`Modularity.Compute`'s two different fallback behaviors for uncommunitied vertices**
+     (excluded from the internal-edges numerator, but bucketed into a synthetic community for the
+     sum-of-squares term) documented in place — behavior unchanged, now explained.
+- **Rationale:** Items 1-2 are real API-surface tightening, done now while nothing external
+  depends on the public shape (the same "M8 is the freeze moment" reasoning as the
+  NexusVerifier-findings entry above). Item 3 is a correctness gap in guard-clause consistency,
+  not a design question — fixed outright. Items 4-6 are pure documentation, matching this
+  codebase's own established doc-density standard.
+- **What it changes:** `PropertyKey.cs`, `SparseSet.cs`, `Topos.Hypergraph.csproj` (behavioral/
+  visibility changes); `SWalk.cs` + new `SWalkTests.cs` regression test (behavioral fix);
+  `IHypergraphQuery.cs`, `HypergraphKernel.cs`, `HypergraphViews.cs`, `LearnableEdge.cs`,
+  `VectorIndex.cs`, `Modularity.cs` (doc-only). 177 tests pass (up from 176).
+
 ---
 
 ## 7. Decision log format for future entries

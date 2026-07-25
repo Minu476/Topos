@@ -227,7 +227,7 @@ What this means concretely:
 
 ## 10. Honest caveats
 
-- **Code, tests, and benchmarks all exist now.** 176 tests pass (kernel, persistence, sample,
+- **Code, tests, and benchmarks all exist now.** 177 tests pass (kernel, persistence, sample,
   GDS-parity); the M0 concurrency model was corrected from measured benchmark data during
   implementation, not left as inference — see `docs/M0_BENCHMARK_RESULTS_2026-07-24.md`. Don't
   trust older docs (or your own memory of them) that describe Topos as pre-code.

@@ -14,10 +14,24 @@ namespace Topos.Hypergraph;
 /// </summary>
 public static class SWalk
 {
-    /// <summary>Every hyperedge reachable from <paramref name="start"/> via a chain of s-adjacent hyperedges.</summary>
+    /// <summary>
+    /// Every hyperedge reachable from <paramref name="start"/> via a chain of s-adjacent
+    /// hyperedges. Throws <see cref="ArgumentOutOfRangeException"/> immediately (not deferred to
+    /// first enumeration) if <paramref name="s"/> is less than 1 — matching <see cref="Distance"/>'s
+    /// eager-throw behavior. This method is implemented as an iterator internally, but the guard
+    /// clause is split into this eager wrapper deliberately: a bare <c>yield return</c> method's
+    /// argument checks don't run until the caller starts enumerating, which would make an invalid
+    /// <paramref name="s"/> throw only on <c>.ToList()</c>/<c>foreach</c>, not on the call itself
+    /// — a real footgun for a caller who builds the sequence without immediately consuming it.
+    /// </summary>
     public static IEnumerable<Handle> Reachable(IHypergraphQuery graph, Handle start, int s)
     {
         if (s < 1) throw new ArgumentOutOfRangeException(nameof(s), "s must be at least 1.");
+        return ReachableCore(graph, start, s);
+    }
+
+    private static IEnumerable<Handle> ReachableCore(IHypergraphQuery graph, Handle start, int s)
+    {
         if (!graph.ContainsVertex(start)) yield break;
 
         var edges = graph.HyperedgeHandles();
@@ -43,7 +57,10 @@ public static class SWalk
         }
     }
 
-    /// <summary>Shortest s-walk length between two hyperedges, or null if none exists at this s.</summary>
+    /// <summary>
+    /// Shortest s-walk length between two hyperedges, or null if none exists at this s. Throws
+    /// <see cref="ArgumentOutOfRangeException"/> immediately if <paramref name="s"/> is less than 1.
+    /// </summary>
     public static int? Distance(IHypergraphQuery graph, Handle from, Handle to, int s)
     {
         if (s < 1) throw new ArgumentOutOfRangeException(nameof(s), "s must be at least 1.");

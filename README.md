@@ -38,7 +38,7 @@ still open.
   the falsifiability gate: a non-RLB second consumer (`samples/Topos.Samples.ChatMemory`).
 - **M6** — s-walk traversal, label propagation, triangle count, modularity.
 
-176 tests pass across the kernel, persistence, sample, and GDS-parity suites. Topos is also a live
+177 tests pass across the kernel, persistence, sample, and GDS-parity suites. Topos is also a live
 `ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target — see
 `Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live Neo4j
 round-trips) passing against it.

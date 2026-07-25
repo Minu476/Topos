@@ -36,14 +36,18 @@ namespace Topos.Hypergraph;
 /// </summary>
 public static class HypergraphViews
 {
+    /// <summary>A fixed vertex subset of <paramref name="source"/> — vertices where <paramref name="predicate"/> holds, evaluated live. Same mechanism as <see cref="Mask"/>; see this class's doc for why.</summary>
     public static IHypergraphQuery Subgraph(IHypergraphQuery source, Func<Handle, bool> predicate) =>
         new FilteredView(source, predicate);
 
+    /// <summary>A live-masked view of <paramref name="source"/> — vertices where <paramref name="predicate"/> holds, re-evaluated on every call. Same mechanism as <see cref="Subgraph"/>; see this class's doc for why.</summary>
     public static IHypergraphQuery Mask(IHypergraphQuery source, Func<Handle, bool> predicate) =>
         new FilteredView(source, predicate);
 
+    /// <summary>Vertices present in either <paramref name="a"/> or <paramref name="b"/>. On a Handle both resolve, <paramref name="a"/>'s data wins — see <see cref="UnionView"/>'s doc for the precedence rule and the shared-identity-space requirement.</summary>
     public static IHypergraphQuery Union(IHypergraphQuery a, IHypergraphQuery b) => new UnionView(a, b);
 
+    /// <summary>Vertices in both <paramref name="a"/> and <paramref name="b"/> — "what A and B agree exists."</summary>
     public static IHypergraphQuery Intersect(IHypergraphQuery a, IHypergraphQuery b) =>
         new FilteredView(a, b.ContainsVertex);
 
