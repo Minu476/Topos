@@ -180,6 +180,9 @@ across sessions and is authoritative when FSDE is cold.
     │                                  # to Topos itself but relevant if you touch that instance)
     ├── PARADOX_COMPRESSION_SEARCH.md # resolves spec §12 Q1 — the citation was from an unrelated project
     ├── GDS_ALGORITHM_TIERS.md        # resolves spec §12 Q9 — GDS Community/Enterprise verification
+    ├── NEXUS_VERIFIER_INTEGRATION_FINDINGS.md  # M8/M9 input: findings from the NexusVerifier
+    │                                  # integration (the second real Topos consumer). Read before
+    │                                  # the M8 API-stability review — 6 source-cited findings.
     └── reactions/                    # verbatim GPT/Claude review rounds
 ```
 

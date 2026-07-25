@@ -163,6 +163,13 @@ ask what he wants to do next. If asked for a recommendation: API stability revie
 highest-leverage first slice of M8, since it's the part hardest to undo later — but this is a
 recommendation, not a plan already in motion.
 
+**If resuming M8, read `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` first.** It's the
+source-cited digest of six findings from the NexusVerifier integration (Topos's second real
+consumer, done July 2025) — one real doc-vs-code bug (per-Incidence cell properties documented
+but not built), two API-freeze decisions deferred since M0 (`Handle.Invalid`, `Generation`),
+and three ergonomic notes. All citations are `file:line` and verified. The integration itself
+lives in the NexusVerifier repo (`docs/TOPOS_INTEGRATION_REPORT.md`, branch `topos-integration`).
+
 M7 (spectral machinery) stays deferred — three voices (investigation + both reviewers) agreed,
 and nothing since has forced it. Don't start it without a concrete forcing requirement.
 
