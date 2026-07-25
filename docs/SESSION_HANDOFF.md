@@ -1,6 +1,6 @@
-# Session Handoff — Topos (M0–M6 implemented; M8 paused for dogfooding)
+# Session Handoff — Topos (M0–M6 implemented; M8 in progress)
 
-**Last updated:** 2026-07-24
+**Last updated:** 2026-07-25
 **Purpose:** Comprehensive briefing so the next session (in Topos, possibly with a different
 agent) can resume without re-deriving context. **This is the first document to read.**
 
@@ -17,10 +17,12 @@ purpose-fit for AI / agent memory. The name (*topos* = Greek for "place/location
 *topology*) invokes the central thesis: knowledge stored as topological graph structure rather
 than neural-network weights.
 
-**Status: M0–M6 implemented and tested. M7 (spectral) deferred by design. M8 (OSS polish)
-intentionally paused** — Nasser chose to use Topos hands-on via Rich-Learning-Base before
-resuming the roadmap, rather than continuing straight through to M8. See §4 for what that
-means concretely and §5 for what to do about it.
+**Status: M0–M6 implemented and tested. M7 (spectral) deferred by design. M8 (OSS polish / API
+stability) is in progress** — Nasser dogfooded via Rich-Learning-Base first, then a second real
+consumer (NexusVerifier) produced six concrete API-stability findings that became M8's first
+slice, resolved 2026-07-25 (`docs/DECISIONS.md`'s 2026-07-25 entry). M8 is not fully closed —
+this was findings-driven, not a from-scratch review of the whole public surface. See §4 for what
+that means concretely and §5 for what to do about it.
 
 Two things worth internalizing before anything else:
 - **The spec was approved and implemented — this is not still the investigation phase.**
@@ -60,11 +62,14 @@ Two things worth internalizing before anything else:
     ├── PARADOX_COMPRESSION_SEARCH.md        # resolves spec §12 Q1
     ├── GDS_ALGORITHM_TIERS.md               # resolves spec §12 Q9
     ├── GDS_ORACLE_SETUP.md                  # GDS Docker setup + the Neo4j credential incident
+    ├── NEXUS_VERIFIER_INTEGRATION_FINDINGS.md  # M8 input: 6 findings, resolved 2026-07-25
+    ├── ROLE_CONVENTIONS.md                  # M8: documented role-byte-enum pattern (finding #3)
     ├── SESSION_HANDOFF.md                   # this file
     └── reactions/                            # verbatim GPT/Claude review rounds
 ```
 
-173 tests pass across the kernel, persistence, sample, and GDS-parity suites. Build:
+176 tests pass across the kernel, persistence, sample, and GDS-parity suites (up from 173 as of
+2026-07-25, with 3 new `Handle.Invalid` regression tests). Build:
 `dotnet build Topos.sln`. Test: `dotnet test Topos.sln`.
 
 ---
@@ -150,25 +155,36 @@ round-trips.
    README updated to match all of the above (Status, RLB relationship, Documents table,
    Provenance section all were stale and are now current).
 
+**This session (2026-07-25)** — resumed M8, scoped to
+`docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md`'s six findings (see §4.1 for the summary and
+`docs/DECISIONS.md`'s 2026-07-25 entry for full detail). Nasser made the two real API-freeze
+calls via explicit questions before any code was touched (fix the doc for cell properties, wire
+`Handle.Invalid` into `TryGetVertex` failures) and opted into all three ergonomic items
+(role-convention doc, `HasCycle` amplification, layer-1 traversal confirmation). Files touched:
+`Incidence.cs`, `Handle.cs`, `HypergraphKernel.cs`, `FilteredView.cs`, `UnionView.cs`,
+`IHypergraphQuery.cs`, new `docs/ROLE_CONVENTIONS.md`, new regression tests in
+`HypergraphKernelTests.cs`/`ViewsTests.cs`, plus this handoff, `AGENTS.md`, and `DECISIONS.md`.
+
 ---
 
 ## 4. The three things that matter most for the next session
 
-### 4.1 Roadmap state: M6 done, M7 skip, M8 paused — not blocked, not forgotten
+### 4.1 Roadmap state: M6 done, M7 skip, M8 in progress (findings-driven slice done 2026-07-25)
 
-If you're starting a fresh session and M8 hasn't moved, **that's expected, not a problem to
-fix.** Nasser is using the RLB integration hands-on first. Don't restart M8 work unprompted;
-ask what he wants to do next. If asked for a recommendation: API stability review (locking
-`IHypergraphQuery` and the public surface before anything depends on it externally) is the
-highest-leverage first slice of M8, since it's the part hardest to undo later — but this is a
-recommendation, not a plan already in motion.
+**2026-07-25 update:** the six `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` findings were
+resolved this session — see `docs/DECISIONS.md`'s 2026-07-25 entry for the full list of what was
+decided and what changed. Summary: fixed the one real doc-vs-code bug (`Incidence.cs`'s
+cell-property claim), locked the `Handle.Invalid`/`Generation` conventions (wired `Invalid` into
+`TryGetVertex` failures across the kernel and both views; `Generation` stays reserved with
+corrected doc wording), documented a role-byte-enum convention (`docs/ROLE_CONVENTIONS.md`,
+no kernel change), amplified the `HasCycle` doc warning, and confirmed role-aware traversal
+stays out of the kernel (candidate for a future M9+ `Knowledge` package).
 
-**If resuming M8, read `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` first.** It's the
-source-cited digest of six findings from the NexusVerifier integration (Topos's second real
-consumer, done July 2025) — one real doc-vs-code bug (per-Incidence cell properties documented
-but not built), two API-freeze decisions deferred since M0 (`Handle.Invalid`, `Generation`),
-and three ergonomic notes. All citations are `file:line` and verified. The integration itself
-lives in the NexusVerifier repo (`docs/TOPOS_INTEGRATION_REPORT.md`, branch `topos-integration`).
+**M8 is not fully closed.** This slice was scoped to the six NexusVerifier findings, not a
+ground-up audit of the entire public surface (`IHypergraphKernel`'s other methods, the
+persistence package's public API, etc.). If a fresh session picks this up: ask Nasser whether
+M8 continues with a broader API-stability pass, or whether the findings-driven slice was
+sufficient to call M8 done. Don't assume either without asking.
 
 M7 (spectral machinery) stays deferred — three voices (investigation + both reviewers) agreed,
 and nothing since has forced it. Don't start it without a concrete forcing requirement.
@@ -201,8 +217,10 @@ methodology that should gate any new attempt, per the project's own stated lesso
 
 **Read AGENTS.md and this handoff first. Then:**
 
-- **If Nasser wants to continue the roadmap** → M8 is the live option (API stability review is
-  the recommended first slice); M7 stays skipped absent a forcing requirement.
+- **If Nasser wants to continue the roadmap** → M8's NexusVerifier-findings slice is done
+  (2026-07-25); a broader ground-up API-stability review of the rest of the public surface is
+  the natural next slice if Nasser wants to keep going. M7 stays skipped absent a forcing
+  requirement.
 - **If Nasser wants to continue dogfooding via RLB** → `tools/ToposHyperedgeDemo` in the RLB
   repo is the existing hands-on entry point; RLB's real Neo4j data has no hyperedges yet, which
   is itself worth discussing (is that expected, or a sign RLB's HyperEdge model isn't actually

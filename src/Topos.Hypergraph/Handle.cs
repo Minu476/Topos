@@ -7,21 +7,27 @@ namespace Topos.Hypergraph;
 /// Handle's logical identity never changes and is never recycled, even after the vertex it names
 /// goes dormant (Invariant 1).
 ///
-/// <see cref="Generation"/> is reserved for M4 physical-slot-relocation detection (EnTT pattern;
-/// spec §3.5 / Q7, lean (a)). In M0 (in-memory, no compaction) it is always 0 and load-bearing
-/// for nothing — the field exists now so the struct layout is stable through M4's compaction
-/// addition, rather than forcing a breaking format change later.
+/// <see cref="Generation"/> is reserved for a future physical-slot-compaction milestone (EnTT
+/// pattern; spec §3.5 / Q7, lean (a)) — <b>not M4</b>: M4 shipped tiered persistence (snapshot
+/// save/reload) without needing it, since snapshot reload restores Handles verbatim rather than
+/// relocating live slots. It is always 0 today and load-bearing for nothing — the field exists so
+/// the struct layout is stable if a future compaction pass needs it, rather than forcing a
+/// breaking format change later. Settled M8, see `docs/DECISIONS.md`.
 /// </summary>
 public readonly record struct Handle(uint Index, uint Generation = 0)
 {
     /// <summary>
-    /// A reserved sentinel value. <c>HypergraphKernel</c>'s own <c>TryGet</c>-style failures still
-    /// return C#'s <c>default(Handle)</c> (Index 0) rather than this — that's indistinguishable
-    /// from a real Handle #0 without checking the accompanying <c>bool</c>, and using
-    /// <see cref="Invalid"/> there would be a real (if small) behavioral change, not a doc fix, so
-    /// it's left as a known gap rather than silently wired in. <c>IHypergraphQuery.HasCycle</c>'s
-    /// internal DFS does use it, though — as the "no parent" sentinel for the root of each
-    /// component, where no real vertex is a valid answer.
+    /// The reserved sentinel for "no valid Handle." <b>Wired into failure paths as of M8</b> (see
+    /// `docs/DECISIONS.md`): <see cref="HypergraphKernel.TryGetVertex"/> and its
+    /// <see cref="IHypergraphQuery"/> peers (<c>FilteredView</c>, <c>UnionView</c>) set the out
+    /// <c>Vertex</c>'s <see cref="Vertex.Handle"/> to this value on failure, rather than C#'s
+    /// <c>default(Handle)</c> (Index 0) — which used to be indistinguishable from a real vertex
+    /// #0 to any caller that skipped the accompanying <c>bool</c>. Always check the <c>bool</c>
+    /// regardless; <see cref="Invalid"/> is a defense-in-depth signal, not the primary contract.
+    /// Note this convention covers <c>Handle</c>-shaped results specifically — generic
+    /// <c>TryGetProperty&lt;T&gt;</c> failures still return <c>default(T)</c>, since <c>T</c> need
+    /// not be Handle-related at all. <c>IHypergraphQuery.HasCycle</c>'s internal DFS also uses
+    /// this value as the "no parent" sentinel for the root of each component.
     /// </summary>
     public static readonly Handle Invalid = new(uint.MaxValue, uint.MaxValue);
 

@@ -23,6 +23,19 @@ public class HypergraphKernelTests
     }
 
     [Fact]
+    public void TryGetVertex_OnUnknownHandle_OutVertexCarriesHandleInvalid()
+    {
+        // M8 decision (docs/DECISIONS.md): failure carries Handle.Invalid, not default(Handle)
+        // (Index 0), so a caller that forgets to check the bool can't mistake this for real
+        // vertex #0.
+        var kernel = new HypergraphKernel();
+
+        Assert.False(kernel.TryGetVertex(new Handle(999), out var v));
+        Assert.Equal(Handle.Invalid, v.Handle);
+        Assert.False(v.Handle.IsValid);
+    }
+
+    [Fact]
     public void NAryHyperedge_RoundTripsAllMembers_InOrdinalOrder()
     {
         // Mirrors RLB's HyperEdge shape (spec §1.1): one Anchor, N Conditions, one Target,

@@ -16,14 +16,13 @@ memory, and provenance.
 > weights.** In category theory, a *topos* is a deep theory of structured contexts — a fitting
 > ambition for a foundational substrate that many domains build on.
 
-**Current status (2026-07-24): M0–M6 implemented and tested; M7 (spectral) deferred by design,
-M8 (OSS polish) intentionally paused.** The spec was approved (GPT + Claude passes,
-`docs/reactions/`) before implementation started. 173 tests pass across the kernel,
-persistence, sample, and GDS-parity suites; Topos is a live `ProjectReference` in
-Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`), not just a design target — RLB's
-346-test suite, including live Neo4j round-trips, passes against it. Nasser is dogfooding it via
-RLB before resuming the M8 roadmap — see `docs/SESSION_HANDOFF.md` for the precise carry-on
-state and why M8 is paused rather than in progress.
+**Current status (2026-07-25): M0–M6 implemented and tested; M7 (spectral) deferred by design;
+M8 (OSS polish / API stability) in progress.** The spec was approved (GPT + Claude passes,
+`docs/reactions/`) before implementation started. Topos is a live `ProjectReference` in
+Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`) and has a second real consumer
+(NexusVerifier's AND-OR proof-search chainer) — see `docs/SESSION_HANDOFF.md` for the precise
+carry-on state and `docs/DECISIONS.md`'s 2026-07-25 entry for what M8's first slice (the
+NexusVerifier-findings API-freeze decisions) resolved.
 
 The namespace is `Topos.Hypergraph`, locked for M0–M3 per `docs/DECISIONS.md` §4.1 — the deeper
 "incidence model" reframe stays a reach goal, not adopted.
@@ -183,12 +182,15 @@ across sessions and is authoritative when FSDE is cold.
     ├── NEXUS_VERIFIER_INTEGRATION_FINDINGS.md  # M8/M9 input: findings from the NexusVerifier
     │                                  # integration (the second real Topos consumer). Read before
     │                                  # the M8 API-stability review — 6 source-cited findings.
+    ├── ROLE_CONVENTIONS.md           # M8: the documented byte-backed-enum role pattern
+    │                                  # (resolves finding #3) — no kernel change, consumer guidance
     └── reactions/                    # verbatim GPT/Claude review rounds
 ```
 
-**M0–M6 are implemented and tested** (173 tests). **M7 is deferred by design** (spectral
-machinery — no domain forces it yet). **M8 (OSS polish) is intentionally paused**, not
-in-progress — see `docs/SESSION_HANDOFF.md` §4.1 for why and what resumes it.
+**M0–M6 are implemented and tested.** **M7 is deferred by design** (spectral
+machinery — no domain forces it yet). **M8 (OSS polish / API stability) is in progress** — its
+first slice (the NexusVerifier-findings API-freeze decisions) is done; see
+`docs/SESSION_HANDOFF.md` §4.1 and `docs/DECISIONS.md`'s 2026-07-25 entry.
 
 ---
 
@@ -225,7 +227,7 @@ What this means concretely:
 
 ## 10. Honest caveats
 
-- **Code, tests, and benchmarks all exist now.** 173 tests pass (kernel, persistence, sample,
+- **Code, tests, and benchmarks all exist now.** 176 tests pass (kernel, persistence, sample,
   GDS-parity); the M0 concurrency model was corrected from measured benchmark data during
   implementation, not left as inference — see `docs/M0_BENCHMARK_RESULTS_2026-07-24.md`. Don't
   trust older docs (or your own memory of them) that describe Topos as pre-code.
@@ -239,14 +241,15 @@ What this means concretely:
   field already in `Handle.cs` (option (a), include-from-M0, as the spec leaned). Q9 (GDS
   algorithm tier) is resolved — see `docs/GDS_ALGORITHM_TIERS.md`. **Q2 (identity: hypergraph
   vs. incidence model) and Q10 (capability partition) are still genuinely open** — they're
-  Nasser's calls, not blockers, and nothing forces resolving them before M8.
+  Nasser's calls, not blockers, and nothing forces resolving them before M8 finishes.
 - **RLB is in scope and the integration is live**, not just decided — see §4. The earlier "RLB
   stays untouched" framing in the oldest docs is fully superseded.
-- **M8 is paused deliberately, not stalled.** Nasser chose to use Topos hands-on via RLB (and
-  is weighing a possible future NexusVerifier angle — a Lean proof-search hypergraph, discussed
-  2026-07-24 but not started) before resuming the OSS-polish milestone. If you're picking up a
-  fresh session and M8 still isn't moving, that's expected — check with Nasser before assuming
-  it's blocked or forgotten.
+- **M8 resumed 2026-07-25.** Nasser dogfooded via RLB, then a second real consumer
+  (NexusVerifier) surfaced six concrete API-stability findings — see
+  `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` and `docs/DECISIONS.md`'s 2026-07-25 entry for
+  what was resolved. M8 is not fully closed — this pass covered the six NexusVerifier findings,
+  not a from-scratch API-stability review of the whole public surface. Check with Nasser on
+  what's next for M8 rather than assuming it's done.
 - **A separate incident worth knowing about if you ever touch the shared Neo4j Desktop
   instance** (not the GDS-oracle Docker container, a different one other local projects share):
   its credential was rotated 2026-07-24 after being typed into a chat session, and now lives in
