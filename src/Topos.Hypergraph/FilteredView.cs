@@ -29,8 +29,8 @@ public sealed class FilteredView(IHypergraphQuery source, Func<Handle, bool> pre
 
     public bool TryGetVertex(Handle handle, out Vertex vertex)
     {
-        if (predicate(handle)) return source.TryGetVertex(handle, out vertex);
-        vertex = default;
+        if (predicate(handle) && source.TryGetVertex(handle, out vertex)) return true;
+        vertex = new Vertex(Handle.Invalid, VertexRoles.None, VertexStatus.Dormant);
         return false;
     }
 

@@ -55,7 +55,12 @@ public sealed class HypergraphKernel : IHypergraphQuery
         return handle;
     }
 
-    public bool TryGetVertex(Handle handle, out Vertex vertex) => _vertices.TryGet(handle, out vertex);
+    public bool TryGetVertex(Handle handle, out Vertex vertex)
+    {
+        if (_vertices.TryGet(handle, out vertex)) return true;
+        vertex = new Vertex(Handle.Invalid, VertexRoles.None, VertexStatus.Dormant);
+        return false;
+    }
 
     /// <summary>
     /// Inserts a vertex at a specific, already-allocated Handle — bypassing

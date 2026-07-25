@@ -27,8 +27,12 @@ public sealed class UnionView(IHypergraphQuery a, IHypergraphQuery b) : IHypergr
 
     public IReadOnlyList<Handle> VertexHandles() => [.. a.VertexHandles().Union(b.VertexHandles())];
 
-    public bool TryGetVertex(Handle handle, out Vertex vertex) =>
-        a.TryGetVertex(handle, out vertex) || b.TryGetVertex(handle, out vertex);
+    public bool TryGetVertex(Handle handle, out Vertex vertex)
+    {
+        if (a.TryGetVertex(handle, out vertex) || b.TryGetVertex(handle, out vertex)) return true;
+        vertex = new Vertex(Handle.Invalid, VertexRoles.None, VertexStatus.Dormant);
+        return false;
+    }
 
     public IReadOnlyList<Handle> GetVertexHyperedges(Handle vertex) =>
         [.. a.GetVertexHyperedges(vertex).Union(b.GetVertexHyperedges(vertex))];

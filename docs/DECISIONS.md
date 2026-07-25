@@ -301,6 +301,51 @@ In priority order:
   engineering adjudication items, not design-coherence questions — exactly the kind a spec
   should "leave for implementation to answer."
 
+### 2026-07-25 — M8 API-FREEZE: NexusVerifier integration findings resolved
+
+- **Decider:** Nasser (via AskUserQuestion during the M8 session), executed by Opus 5.
+- **Question:** `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` raised six findings from Topos's
+  second real consumer (NexusVerifier's AND-OR proof-search chainer, July 2025). M8 is the
+  API-freeze milestone; each needed an explicit decision rather than another deferral.
+- **Decision:**
+  1. **Finding #1 (per-Incidence cell properties documented but not built):** fix the doc, don't
+     build the mechanism. `Incidence.cs` now states plainly that cell-level properties are a
+     layer-1 concern (reify the membership as its own edge-vertex, or keep a side index) — no
+     `SetProperty(key, incidence, value)` overload added.
+  2. **Finding #2a (`Handle.Invalid`):** wire it in. `HypergraphKernel.TryGetVertex`,
+     `FilteredView.TryGetVertex`, and `UnionView.TryGetVertex` now set the out `Vertex`'s `Handle`
+     to `Handle.Invalid` on failure, replacing the ambiguous `default(Handle)` (Index 0). This is
+     a real behavioral change to public API output on the failure path (the `bool` return value
+     is unchanged); callers who correctly check the `bool` see no difference.
+  3. **Finding #2b (`Generation`):** stays reserved, not wired to anything. `Handle.cs`'s doc
+     corrected from the stale "reserved for M4" (M4 shipped without using it) to "reserved for a
+     future compaction milestone."
+  4. **Finding #3 (role registry):** documented convention only, no kernel change — see new
+     `docs/ROLE_CONVENTIONS.md`. `AddIncidence` keeps taking a raw `byte`; consumers are guided
+     toward a `byte`-backed `enum` cast pattern instead of ungrounded `const byte` fields.
+  5. **Finding #4 (`HasCycle` misleads on n-ary graphs):** amplified in place — the "trivially
+     cyclic on 3+ member hyperedges" warning moved to the front of the doc as a loud one-line
+     callout, with the NexusVerifier near-miss cited as evidence the doc already does its job.
+     Not renamed; renaming was considered and rejected as unnecessary churn given the doc now
+     leads with the warning.
+  6. **Finding #5 (role-aware traversal at the kernel layer):** confirmed as staying out of the
+     kernel, not just deferred. `IHypergraphQuery`'s class doc now states this explicitly, naming
+     it as the most likely first content of a future M9+ `Topos.Hypergraph.Knowledge` package.
+  7. **Finding #6 (RLB's `IGraphMemory` ergonomics):** informational only, not a Topos action —
+     no change made; recorded as a lesson for any future Topos interface that grows an "optional
+     capability" split (apply default-implementation escape hatches to *all* members from day
+     one, not retroactively).
+- **Rationale:** M8 exists to convert carried-since-M0 hedges into locked conventions. Two of the
+  six findings were real decisions (cell properties, `Handle.Invalid`); the rest were ergonomic
+  or already-correct-by-design. Every finding came from source-level work against a real second
+  consumer, not speculation — see the findings doc for full detail and citations.
+- **What it changes:** `src/Topos.Hypergraph/Incidence.cs`, `Handle.cs`, `HypergraphKernel.cs`,
+  `FilteredView.cs`, `UnionView.cs`, `IHypergraphQuery.cs`; new `docs/ROLE_CONVENTIONS.md`; new
+  regression tests in `HypergraphKernelTests.cs` and `ViewsTests.cs` pinning the
+  `Handle.Invalid`-on-failure contract. No change to `Topos.Hypergraph.Persistence` or any
+  existing public method signature — the `Handle.Invalid` change is a same-signature output-value
+  change on an already-failing path.
+
 ---
 
 ## 7. Decision log format for future entries

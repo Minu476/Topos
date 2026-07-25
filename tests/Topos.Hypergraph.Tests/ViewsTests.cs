@@ -91,6 +91,22 @@ public class ViewsTests
     }
 
     [Fact]
+    public void Subgraph_TryGetVertex_OnExcludedHandle_OutVertexCarriesHandleInvalid()
+    {
+        // M8 decision (docs/DECISIONS.md): every IHypergraphQuery implementation's TryGetVertex
+        // failure carries Handle.Invalid, not default(Handle) — pinned here for FilteredView too,
+        // not just the kernel.
+        var raw = new HypergraphKernel();
+        var a = raw.CreateVertex();
+        var outside = raw.CreateVertex();
+
+        var view = HypergraphViews.Subgraph(raw, h => h == a);
+
+        Assert.False(view.TryGetVertex(outside, out var v));
+        Assert.Equal(Handle.Invalid, v.Handle);
+    }
+
+    [Fact]
     public void Union_CombinesVerticesFromBothViews()
     {
         var raw = new HypergraphKernel();
@@ -126,6 +142,22 @@ public class ViewsTests
 
         Assert.True(union.TryGetVertex(shared, out var resolved));
         Assert.Equal(VertexRoles.Edge, resolved.Roles); // a's version, not b's
+    }
+
+    [Fact]
+    public void Union_TryGetVertex_OnHandleInNeither_OutVertexCarriesHandleInvalid()
+    {
+        var raw = new HypergraphKernel();
+        var a = raw.CreateVertex();
+        var b = raw.CreateVertex();
+        var elsewhere = raw.CreateVertex();
+
+        var viewA = HypergraphViews.Subgraph(raw, h => h == a);
+        var viewB = HypergraphViews.Subgraph(raw, h => h == b);
+        var union = HypergraphViews.Union(viewA, viewB);
+
+        Assert.False(union.TryGetVertex(elsewhere, out var v));
+        Assert.Equal(Handle.Invalid, v.Handle);
     }
 
     /// <summary>Minimal IHypergraphQuery stub that always resolves one fixed Handle -- used only to pin down UnionView's conflict precedence in isolation.</summary>

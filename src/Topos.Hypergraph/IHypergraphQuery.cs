@@ -40,6 +40,19 @@ namespace Topos.Hypergraph;
 /// detection and transitive closure are **not** standard GDS procedures — spec §5's own honest
 /// limit ("where the hypergraph and its projection disagree, GDS cannot verify") applies; those
 /// two are unit-tested only, on hand-verified small graphs.
+///
+/// <b>Role-aware/directed traversal stays out of this interface — confirmed, not just deferred,
+/// as of M8.</b> Every default algorithm here (<see cref="GetBfs"/>, <see cref="GetDfs"/>,
+/// <see cref="GetShortestPath"/>, <see cref="GetConnectedComponents"/>, <see cref="HasCycle"/>)
+/// is role-blind and co-membership-symmetric by design (spec §4.1: "the kernel does not judge").
+/// Two independent real consumers (`samples/Topos.Samples.ChatMemory`'s
+/// <c>EntitiesMentionedIn</c>, and NexusVerifier's n-ary proof-search chainer — see
+/// `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` finding #5) have each hand-rolled the same
+/// ~10-line role-filtered walk over <see cref="HypergraphKernel.IncidencesFrom"/> +
+/// <see cref="Incidence.Role"/>. M8 does not add that here — it stays a layer-1 concern. If a
+/// future layer-1 <c>Topos.Hypergraph.Knowledge</c> package (M9+) materializes, directed/
+/// role-gated search (e.g. <c>DirectedBfs(start, roleFilter)</c>) is its most obvious candidate,
+/// precisely because two unrelated consumers already needed the same thing.
 /// </summary>
 public interface IHypergraphQuery
 {
@@ -245,22 +258,34 @@ public interface IHypergraphQuery
     }
 
     /// <summary>
+    /// <b>Warning, read this before calling: on any real n-ary hypergraph (3+ members on a
+    /// hyperedge) this returns <c>true</c> almost always. It is not a general "is this hypergraph
+    /// acyclic" check</b> — see below for why, and use role-aware traversal at layer 1 for the
+    /// question you probably actually want.
+    ///
     /// Whether the topology-only adjacency graph contains a cycle, checking every component
     /// (not just one). Standard undirected-graph DFS cycle detection: track each vertex's parent
     /// in the DFS tree; a visited neighbor that isn't the immediate parent means a cycle.
     ///
-    /// <b>Important, non-obvious consequence of the clique-style adjacency:</b> any hyperedge
-    /// with 3+ members is *trivially* cyclic under this reading — three co-members A, B, C are
-    /// all pairwise "adjacent" (each is co-incident with the other two on the same hyperedge), so
-    /// A→B→C→A is a real cycle in the derived graph even though there's only one hyperedge
-    /// involved. RLB's own D2 hyperedges (Anchor + Conditions + Target) almost always have 3+
-    /// members, so <see cref="HasCycle"/> will return <c>true</c> for nearly any real RLB-shaped
-    /// graph — that's correct given what this method actually computes (cycles in the
-    /// clique-expansion of hyperedge membership), not a bug, but it means "is this hypergraph
-    /// acyclic" is a near-always-false question at this layer, and answering the more useful
-    /// question ("is there a cyclic *dependency* among Anchor→Target legs") needs role-aware
-    /// traversal — a layer-1 concern, not this method's job. See <c>CycleDetectionTests</c> for
-    /// both the trivial-3-member case and a genuinely acyclic binary-chain case.
+    /// <b>Why:</b> under the clique-style adjacency this method uses, any hyperedge with 3+
+    /// members is *trivially* cyclic — three co-members A, B, C are all pairwise "adjacent" (each
+    /// is co-incident with the other two on the same hyperedge), so A→B→C→A is a real cycle in
+    /// the derived graph even though there's only one hyperedge involved. RLB's own D2 hyperedges
+    /// (Anchor + Conditions + Target) almost always have 3+ members, so <see cref="HasCycle"/>
+    /// will return <c>true</c> for nearly any real RLB-shaped graph — that's correct given what
+    /// this method actually computes (cycles in the clique-expansion of hyperedge membership),
+    /// not a bug, but it means "is this hypergraph acyclic" is a near-always-false question at
+    /// this layer. Answering the more useful question ("is there a cyclic *dependency* among
+    /// Anchor→Target legs") needs role-aware traversal — a layer-1 concern, not this method's job
+    /// (confirmed M8, not adding it to the kernel — see `docs/DECISIONS.md`).
+    ///
+    /// <b>This is not hypothetical: a real second consumer hit exactly this.</b> NexusVerifier's
+    /// AND-OR proof-search chainer considered using <see cref="HasCycle"/> for its own cycle
+    /// detection, read this doc, correctly backed off, and hand-rolled a per-DFS-path
+    /// <c>HashSet</c> guard instead (`docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` finding #4).
+    /// The doc did its job that time — keep it loud so it keeps doing that job. See
+    /// <c>CycleDetectionTests</c> for both the trivial-3-member case and a genuinely acyclic
+    /// binary-chain case.
     /// </summary>
     bool HasCycle()
     {
