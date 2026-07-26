@@ -436,6 +436,92 @@ In priority order:
   `IHypergraphQuery.cs`, `HypergraphKernel.cs`, `HypergraphViews.cs`, `LearnableEdge.cs`,
   `VectorIndex.cs`, `Modularity.cs` (doc-only). 177 tests pass (up from 176).
 
+### 2026-07-25 — M8 CLOSED (API-stability scope)
+
+- **Decider:** Nasser (via AskUserQuestion, choosing "call M8 done as-is" over making the license
+  call now or holding off entirely).
+- **Question:** After two API-stability passes this session (the six NexusVerifier findings, then
+  the broader public-surface audit), is there more API-stability work to do, or does M8 close here?
+- **Decision:** **M8's API-stability scope is done.** No further open findings — the audit fork
+  explicitly confirmed the rest of the public surface (`EdgeStatistics`, `HandleAllocator`,
+  `Provenance`, `LabelPropagation`, `TriangleCount`, the persistence package) already meets this
+  codebase's documentation standard. The two remaining spec-listed M8 items —
+  **HIF interchange** and a **docs site** — stay deferred with the re-entry conditions already
+  logged above (a forcing consumer, or a decision to go public). **NuGet-publish readiness**
+  (license file, `PackageLicenseExpression`, `RepositoryUrl`, actually publishing) is a distinct,
+  separately-gated future task, not part of M8's closure — it waits on Nasser deciding a license
+  and a public-release timing, neither decided yet.
+- **Rationale:** M8's actual forcing function (a live third consumer exercising the public API)
+  has been fully addressed. The remaining spec items don't have a forcing function today, and
+  building them speculatively would be exactly the "build what's forced, defer what isn't"
+  violation this project has avoided everywhere else (M7, the role-registry decision, the HIF/
+  docs-site deferral itself). Declaring M8 closed here — rather than leaving it perpetually "in
+  progress" waiting on OSS-timing decisions that aren't imminent — keeps the roadmap status
+  honest.
+- **What it changes:** No code. Status framing only, in `AGENTS.md` and
+  `docs/SESSION_HANDOFF.md` — M8 moves from "in progress" to "done (API-stability scope);
+  HIF/docs-site/NuGet-publish remain separately gated, not blockers."
+
+### 2026-07-25 — M9 SCOPED: layer-1 role-aware directed traversal package
+
+- **Decider:** Nasser, executed by Opus 5.
+- **Question:** "M9" has floated informally since the NexusVerifier findings doc (finding #5) as
+  shorthand for "if a layer-1 `Topos.Hypergraph.Knowledge` package ever gets built" — but it was
+  never part of the locked roadmap (`docs/SPECIFICATION.md` §6 is explicitly "M0 through M8,
+  structure LOCKED") and had no defined scope or exit criterion. Does it warrant becoming a real
+  milestone now, and if so, what exactly does it contain?
+- **Decision: yes, scope it as a real M9, extending (not reopening) the locked M0–M8 structure.**
+  The forcing evidence is stronger than finding #5 originally documented — investigating this
+  decision surfaced a **third** independent reinvention of the identical pattern, not just the
+  two (ChatMemory, NexusVerifier) already on record:
+  1. `samples/Topos.Samples.ChatMemory/ChatMemory.cs:81-85` (`EntitiesMentionedIn`) — one-hop:
+     `GetVertexHyperedges(turn)` → `IncidencesFrom(edge)` → `.Where(i => i.Role == MentionedRole)`.
+  2. `NexusVerifier/NexusAgent/NexusAgent.ToposExperiment/NarySearch/NaryBackwardChainer.cs`
+     (`CandidateEdgesFor`, `SubgoalsOf`, `[verified:src]` 2026-07-25) — multi-hop: role-gated
+     AND-OR recursive search, filtering `IncidencesOf`/`IncidencesFrom` by `BeforeRole`/`AfterRole`.
+  3. **`Rich-Learning-Base/src/RichLearning.V2/Learning/ToposGraphProjection.cs`
+     (`DirectedBfs`, `DirectedShortestPath`, `[verified:src]` 2026-07-25)** — not previously cited
+     in the findings doc. This is the important one: its two private traversal methods are
+     **already written entirely against `IHypergraphQuery`/`Handle`/`Incidence` — zero RLB types**
+     — a full generic directed-BFS-and-shortest-path implementation over role-tagged hyperedge
+     membership, hardcoded to `AnchorRole=0`/`TargetRole=2` only because RLB's `HyperEdgeRole`
+     happens to use those values. It is, functionally, already M9's core — built once, outside
+     Topos, because Topos didn't yet offer it.
+  - **Scope:** a new package, `Topos.Hypergraph.Knowledge` (own assembly — matching the M4
+    packaging-split precedent of splitting at a real architectural boundary, and keeping the
+    kernel itself untouched: "the kernel does not judge" stays intact, this package is where
+    judgment lives). Contents, generalizing what already exists in the three consumers above:
+    - `DirectedBfs(IHypergraphQuery graph, Handle start, byte fromRole, byte toRole)` —
+      generalizes `ToposGraphProjection.DirectedBfs`, parameterized instead of hardcoded.
+    - `DirectedShortestPath(IHypergraphQuery graph, Handle from, Handle to, byte fromRole, byte toRole)`
+      — same generalization of `DirectedShortestPath`.
+    - `RoleFilteredMembers(IHypergraphQuery graph, Handle vertex, byte role)` — the one-hop case,
+      generalizing `ChatMemory.EntitiesMentionedIn`'s pattern so it stops being hand-rolled LINQ.
+    - The `docs/ROLE_CONVENTIONS.md` byte-backed-enum pattern (M8, finding #3) becomes real code
+      here rather than documentation-only: an `AddIncidence<TRole>` extension over
+      `HypergraphKernel` where `TRole : unmanaged, Enum`, so the new traversal methods can also
+      offer `TRole`-typed overloads instead of raw `byte` — closing the loop finding #3 opened.
+    - No kernel changes. Everything above is expressible purely through `IHypergraphQuery`'s
+      existing public surface — consistent with M8 having just locked that surface.
+  - **Exit criterion:** at least one real consumer's hand-rolled version is replaced by a call
+    into this package, proving it's a genuine drop-in rather than parallel scaffolding — the same
+    falsifiability standard M5 set for the kernel itself. `RichLearning.V2.Learning.
+    ToposGraphProjection` is the natural first target: refactor its two private methods to call
+    `Topos.Hypergraph.Knowledge` instead of maintaining its own copy, then confirm RLB's 346-test
+    suite still passes unchanged.
+  - **Not in scope:** anything RLB-specific (`IGraphMemory`, `StateKey`, `HyperEdge`) — those stay
+    exactly where they are, in RLB. M9 only lifts the generic traversal *engine* those types feed
+    into, mirroring how `ToposGraphProjection.BuildAsync` already separates "build a Topos kernel
+    from my domain data" (stays in RLB) from "walk it by role" (moves to Topos).
+- **Rationale:** this is the opposite of speculative — the code this milestone would add has
+  already been written three times independently, by two different projects, against nothing
+  but Topos's existing public API. That's a stronger forcing signal than any other pre-M9 item
+  (HIF interchange, docs site) had, and unlike those, implementing it costs little: it's an
+  extraction and generalization of ~40 already-working lines, not new design.
+- **What it changes:** `docs/SPECIFICATION.md` §6 gains an M9 row (the roadmap's locked structure
+  is *extended*, not reopened — M0–M8's own scopes/exit-criteria are untouched). No code yet;
+  implementation is a separate, not-yet-started step.
+
 ---
 
 ## 7. Decision log format for future entries

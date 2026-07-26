@@ -17,12 +17,22 @@ memory, and provenance.
 > ambition for a foundational substrate that many domains build on.
 
 **Current status (2026-07-25): M0–M6 implemented and tested; M7 (spectral) deferred by design;
-M8 (OSS polish / API stability) in progress.** The spec was approved (GPT + Claude passes,
+M8's API-stability scope is done.** The spec was approved (GPT + Claude passes,
 `docs/reactions/`) before implementation started. Topos is a live `ProjectReference` in
 Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`) and has a second real consumer
 (NexusVerifier's AND-OR proof-search chainer) — see `docs/SESSION_HANDOFF.md` for the precise
-carry-on state and `docs/DECISIONS.md`'s 2026-07-25 entry for what M8's first slice (the
-NexusVerifier-findings API-freeze decisions) resolved.
+carry-on state and `docs/DECISIONS.md`'s three 2026-07-25 entries for what M8 resolved and why
+it's closed. **M8's other spec items — HIF interchange, a docs site, and NuGet-publish readiness
+— are deliberately deferred**, each gated on a condition that hasn't arrived (a forcing consumer,
+or a decision to go public); they are not part of what "M8 done" means here.
+
+**M9 is now scoped (2026-07-25), not started.** A new `Topos.Hypergraph.Knowledge` package —
+layer-1 role-aware directed traversal (`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers`
+over `IHypergraphQuery`), generalizing a pattern three independent real consumers already
+hand-rolled (ChatMemory, RLB's own `ToposGraphProjection`, NexusVerifier). See
+`docs/SPECIFICATION.md` §6's M9 row and `docs/DECISIONS.md`'s "M9 SCOPED" entry for the full
+scope, exit criterion, and why the forcing evidence is unusually strong. No code exists yet —
+don't start implementing without checking with Nasser first.
 
 The namespace is `Topos.Hypergraph`, locked for M0–M3 per `docs/DECISIONS.md` §4.1 — the deeper
 "incidence model" reframe stays a reach goal, not adopted.
@@ -188,9 +198,11 @@ across sessions and is authoritative when FSDE is cold.
 ```
 
 **M0–M6 are implemented and tested.** **M7 is deferred by design** (spectral
-machinery — no domain forces it yet). **M8 (OSS polish / API stability) is in progress** — its
-first slice (the NexusVerifier-findings API-freeze decisions) is done; see
-`docs/SESSION_HANDOFF.md` §4.1 and `docs/DECISIONS.md`'s 2026-07-25 entry.
+machinery — no domain forces it yet). **M8's API-stability scope is done** (two passes: the
+NexusVerifier-findings freeze decisions, then a broader public-surface audit); HIF interchange,
+docs site, and NuGet-publish readiness are separately deferred, not blockers. **M9 is scoped but
+not started** (layer-1 role-aware directed traversal, `docs/SPECIFICATION.md` §6) — see
+`docs/SESSION_HANDOFF.md` §4.1 and `docs/DECISIONS.md`'s four 2026-07-25 entries.
 
 ---
 
@@ -241,15 +253,17 @@ What this means concretely:
   field already in `Handle.cs` (option (a), include-from-M0, as the spec leaned). Q9 (GDS
   algorithm tier) is resolved — see `docs/GDS_ALGORITHM_TIERS.md`. **Q2 (identity: hypergraph
   vs. incidence model) and Q10 (capability partition) are still genuinely open** — they're
-  Nasser's calls, not blockers, and nothing forces resolving them before M8 finishes.
+  Nasser's calls, not blockers, and nothing forces resolving them.
 - **RLB is in scope and the integration is live**, not just decided — see §4. The earlier "RLB
   stays untouched" framing in the oldest docs is fully superseded.
-- **M8 resumed 2026-07-25.** Nasser dogfooded via RLB, then a second real consumer
-  (NexusVerifier) surfaced six concrete API-stability findings — see
-  `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` and `docs/DECISIONS.md`'s 2026-07-25 entry for
-  what was resolved. M8 is not fully closed — this pass covered the six NexusVerifier findings,
-  not a from-scratch API-stability review of the whole public surface. Check with Nasser on
-  what's next for M8 rather than assuming it's done.
+- **M8 closed 2026-07-25 (API-stability scope).** Nasser dogfooded via RLB, then a second real
+  consumer (NexusVerifier) surfaced six concrete API-stability findings; resolving those plus a
+  broader public-surface audit became M8's two passes — see
+  `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` and `docs/DECISIONS.md`'s three 2026-07-25
+  entries for what was resolved and the explicit closure decision. **"M8 done" means the
+  API-stability work is done, not that HIF interchange / a docs site / NuGet-publish readiness
+  have happened** — those are separately deferred, each gated on a condition (forcing consumer,
+  or a go-public decision) that hasn't arrived. Don't treat their absence as M8 being incomplete.
 - **A separate incident worth knowing about if you ever touch the shared Neo4j Desktop
   instance** (not the GDS-oracle Docker container, a different one other local projects share):
   its credential was rotated 2026-07-24 after being typed into a chat session, and now lives in

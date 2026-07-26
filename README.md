@@ -21,10 +21,11 @@ AI-oriented embedded graph database — for on-device AI / privacy-focused graph
 
 ## Status
 
-**M0–M6 implemented; M7 (spectral, deferred by design) and M8 (OSS polish) remain.** The
+**M0–M6 implemented; M7 (spectral) deferred by design; M8's API-stability scope is done.** The
 specification (`docs/SPECIFICATION.md`) was reviewed and approved (GPT + Claude passes,
 `docs/reactions/`) before implementation started; `docs/DECISIONS.md` tracks what's locked vs.
-still open.
+still open. M8's other spec items (HIF interchange, a docs site, NuGet publishing) are
+deliberately deferred pending a forcing consumer or a decision to go public — not in progress.
 
 - **M0** — storage kernel: `Handle`/`Vertex`/`Incidence`/`PropertyKey<T>`, the 2 invariants, SWMR
   concurrency (`ReaderWriterLockSlim`-per-pool). Benchmark-gated per spec §6, including a

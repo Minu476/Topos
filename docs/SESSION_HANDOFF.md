@@ -1,4 +1,4 @@
-# Session Handoff — Topos (M0–M6 implemented; M8 in progress)
+# Session Handoff — Topos (M0–M6 implemented; M8 API-stability scope done)
 
 **Last updated:** 2026-07-25
 **Purpose:** Comprehensive briefing so the next session (in Topos, possibly with a different
@@ -17,12 +17,15 @@ purpose-fit for AI / agent memory. The name (*topos* = Greek for "place/location
 *topology*) invokes the central thesis: knowledge stored as topological graph structure rather
 than neural-network weights.
 
-**Status: M0–M6 implemented and tested. M7 (spectral) deferred by design. M8 (OSS polish / API
-stability) is in progress** — Nasser dogfooded via Rich-Learning-Base first, then a second real
-consumer (NexusVerifier) produced six concrete API-stability findings that became M8's first
-slice, resolved 2026-07-25 (`docs/DECISIONS.md`'s 2026-07-25 entry). M8 is not fully closed —
-this was findings-driven, not a from-scratch review of the whole public surface. See §4 for what
-that means concretely and §5 for what to do about it.
+**Status: M0–M6 implemented and tested. M7 (spectral) deferred by design. M8's API-stability
+scope is done** — Nasser dogfooded via Rich-Learning-Base first, then a second real consumer
+(NexusVerifier) produced six concrete API-stability findings; resolving those plus a broader
+public-surface audit became M8's two passes, both done 2026-07-25 (`docs/DECISIONS.md`'s three
+2026-07-25 entries, the last one an explicit closure decision). **"M8 done" means the
+API-stability work — HIF interchange, a docs site, and NuGet-publish readiness are separately
+deferred, each gated on a condition that hasn't arrived (a forcing consumer, or a go-public
+decision), not part of what closed.** See §4 for what that means concretely and §5 for what to
+do about it.
 
 Two things worth internalizing before anything else:
 - **The spec was approved and implemented — this is not still the investigation phase.**
@@ -182,31 +185,48 @@ forcing consumer): HIF interchange and a docs site are deferred, same discipline
 deferral; package version strings corrected from stale `0.1.0-m0`/`0.1.0-m4` to `0.1.0-m8`.
 177 tests pass (up from 173 at the start of this session).
 
-**M8 is more done than the "in progress" framing above suggests but still not fully closed** —
-this was two API-audit passes (a findings-driven one and a broader sweep), not an exhaustive
-line-by-line review of literally every public member. If a fresh session wants to declare M8
-closed outright, that's a reasonable option to raise with Nasser rather than assume.
+**Asked directly "what's next for M8," Nasser chose to close M8's API-stability scope as-is**
+(over making the license call now, or holding off entirely) — see `docs/DECISIONS.md`'s third
+2026-07-25 entry. Two API-audit passes (a findings-driven one and a broader sweep) is the
+declared-complete scope; nothing further is pending on the API-stability front.
 
 ---
 
 ## 4. The three things that matter most for the next session
 
-### 4.1 Roadmap state: M6 done, M7 skip, M8 in progress (findings-driven slice done 2026-07-25)
+### 4.1 Roadmap state: M6 done, M7 skip, M8's API-stability scope is done (closed 2026-07-25), M9 scoped (2026-07-25, not started)
 
 **2026-07-25 update:** the six `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` findings were
-resolved this session — see `docs/DECISIONS.md`'s 2026-07-25 entry for the full list of what was
-decided and what changed. Summary: fixed the one real doc-vs-code bug (`Incidence.cs`'s
+resolved this session — see `docs/DECISIONS.md`'s first 2026-07-25 entry for the full list of
+what was decided and what changed. Summary: fixed the one real doc-vs-code bug (`Incidence.cs`'s
 cell-property claim), locked the `Handle.Invalid`/`Generation` conventions (wired `Invalid` into
 `TryGetVertex` failures across the kernel and both views; `Generation` stays reserved with
 corrected doc wording), documented a role-byte-enum convention (`docs/ROLE_CONVENTIONS.md`,
 no kernel change), amplified the `HasCycle` doc warning, and confirmed role-aware traversal
 stays out of the kernel (candidate for a future M9+ `Knowledge` package).
 
-**M8 is not fully closed.** This slice was scoped to the six NexusVerifier findings, not a
-ground-up audit of the entire public surface (`IHypergraphKernel`'s other methods, the
-persistence package's public API, etc.). If a fresh session picks this up: ask Nasser whether
-M8 continues with a broader API-stability pass, or whether the findings-driven slice was
-sufficient to call M8 done. Don't assume either without asking.
+**M8 is now closed for its API-stability scope**, per Nasser's explicit call (third 2026-07-25
+entry in `docs/DECISIONS.md`) after a broader public-surface audit (second entry) found nothing
+further to fix. **Don't reopen API-stability work on Topos without a new forcing signal** (a
+fourth consumer, a bug report, etc.) — re-auditing a surface that was just deliberately declared
+stable is exactly the busywork this project's discipline avoids. What's still open, separately:
+HIF interchange and a docs site (deferred, re-entry conditions logged) and NuGet-publish
+readiness (license + package metadata — Nasser's call, not made yet).
+
+**M9 was formally scoped 2026-07-25** (fourth entry in `docs/DECISIONS.md`, also
+`docs/SPECIFICATION.md` §6's new M9 row) — asked directly "what's next for M9," Nasser chose to
+scope it now rather than wait or start the NexusVerifier thread first. M9 is a new
+`Topos.Hypergraph.Knowledge` package: layer-1 role-aware directed traversal
+(`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers` over `IHypergraphQuery`). The forcing
+evidence is unusually strong — investigating this surfaced a **third** independent reinvention of
+the same pattern beyond the two (ChatMemory, NexusVerifier) already on record: RLB's own
+`RichLearning.V2.Learning.ToposGraphProjection.cs` already contains a full generic
+`DirectedBfs`/`DirectedShortestPath` implementation written entirely against Topos's public API
+(zero RLB types) — meaning M9's core is largely an extraction-and-generalization of ~40
+already-working lines, not new design. **Scoped only — no code exists yet.** If a fresh session
+picks this up, the natural first step is refactoring RLB's `ToposGraphProjection` to call the new
+package instead of maintaining its own copy (the exit criterion `docs/DECISIONS.md` already
+names), confirming RLB's 346-test suite still passes.
 
 M7 (spectral machinery) stays deferred — three voices (investigation + both reviewers) agreed,
 and nothing since has forced it. Don't start it without a concrete forcing requirement.
@@ -239,10 +259,13 @@ methodology that should gate any new attempt, per the project's own stated lesso
 
 **Read AGENTS.md and this handoff first. Then:**
 
-- **If Nasser wants to continue the roadmap** → M8's NexusVerifier-findings slice is done
-  (2026-07-25); a broader ground-up API-stability review of the rest of the public surface is
-  the natural next slice if Nasser wants to keep going. M7 stays skipped absent a forcing
-  requirement.
+- **If Nasser wants to continue the roadmap** → M8's API-stability scope is closed (2026-07-25);
+  what's left there is gated (HIF/docs-site need a forcing consumer or go-public decision;
+  NuGet-publish needs a license choice). **M9 is scoped but not implemented** — the natural next
+  slice if continuing the roadmap: refactor RLB's `ToposGraphProjection` to call the new
+  `Topos.Hypergraph.Knowledge` package instead of its own hand-rolled `DirectedBfs`/
+  `DirectedShortestPath`, per the exit criterion in `docs/DECISIONS.md`. M7 stays skipped absent
+  a forcing requirement. Don't restart API-stability work without a new forcing signal.
 - **If Nasser wants to continue dogfooding via RLB** → `tools/ToposHyperedgeDemo` in the RLB
   repo is the existing hands-on entry point; RLB's real Neo4j data has no hyperedges yet, which
   is itself worth discussing (is that expected, or a sign RLB's HyperEdge model isn't actually

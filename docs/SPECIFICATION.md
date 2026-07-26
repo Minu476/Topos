@@ -438,11 +438,15 @@ reflects this.
 
 ---
 
-## 6. Roadmap — M0 through M8 (🔒 structure LOCKED, details per-milestone)
+## 6. Roadmap — M0 through M8 (🔒 structure LOCKED, details per-milestone), extended with M9
 
 Sequenced so each milestone is independently testable. Honest calibration against
 "industrial-level C# hypergraph library": **months, not weeks.**
 `[verified:docs=docs/BASE_INVESTIGATION.md §6]`
+
+**M9 (below) is an extension added 2026-07-25, not part of the original locked M0–M8
+structure** — see `docs/DECISIONS.md`'s 2026-07-25 "M9 SCOPED" entry for why. M0–M8's own
+scopes and exit criteria are unchanged; nothing here reopens them.
 
 | M | Name | Scope | Exit criterion |
 |---|---|---|---|
@@ -455,6 +459,7 @@ Sequenced so each milestone is independently testable. Honest calibration agains
 | **M6** | Analytics | s-walk traversal, community detection, modularity. | Strong GDS verification path (GDS ships Louvain/LabelProp/WCC/SCC/TriangleCount/ClusteringCoef as direct oracles). |
 | **M7** | Spectral (deferred) | Laplacian, incidence matrix, partitioning hooks. | Only if a domain forces it. Three voices agree to defer (investigation + both reviewers). |
 | **M8** | Polish + docs + NuGet + OSS | API stability, benchmark suite, HIF interchange support (port from Julia/HyperNetX), docs site. | OSS-ready. |
+| **M9** | Layer-1 role-aware directed traversal (`Topos.Hypergraph.Knowledge` package, added 2026-07-25) | `DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers` over `IHypergraphQuery`, generalizing the identical pattern three independent consumers already hand-rolled (`ChatMemory.EntitiesMentionedIn`; RLB's `ToposGraphProjection.DirectedBfs`/`DirectedShortestPath`, already RLB-agnostic; NexusVerifier's `CandidateEdgesFor`/`SubgoalsOf`). No kernel changes — pure consumer of the existing public surface. Also hosts `docs/ROLE_CONVENTIONS.md`'s byte-backed-enum pattern as real code (`AddIncidence<TRole>`). | At least one real consumer (RLB's `ToposGraphProjection` is the natural target) replaced by a call into this package, with its existing test suite passing unchanged — the same falsifiability standard M5 set. |
 
 ### 6.1 The build-as-RLB-kernel implications (🔒 LOCKED)
 
