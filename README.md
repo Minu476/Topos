@@ -21,10 +21,10 @@ AI-oriented embedded graph database — for on-device AI / privacy-focused graph
 
 ## Status
 
-**M0–M6 implemented; M7 (spectral) deferred by design; M8's API-stability scope is done.** The
-specification (`docs/SPECIFICATION.md`) was reviewed and approved (GPT + Claude passes,
-`docs/reactions/`) before implementation started; `docs/DECISIONS.md` tracks what's locked vs.
-still open. M8's other spec items (HIF interchange, a docs site, NuGet publishing) are
+**M0–M6 implemented; M7 (spectral) deferred by design; M8's API-stability scope is done; M9
+implemented.** The specification (`docs/SPECIFICATION.md`) was reviewed and approved (GPT +
+Claude passes, `docs/reactions/`) before implementation started; `docs/DECISIONS.md` tracks what's
+locked vs. still open. M8's other spec items (HIF interchange, a docs site, NuGet publishing) are
 deliberately deferred pending a forcing consumer or a decision to go public — not in progress.
 
 - **M0** — storage kernel: `Handle`/`Vertex`/`Incidence`/`PropertyKey<T>`, the 2 invariants, SWMR
@@ -38,11 +38,15 @@ deliberately deferred pending a forcing consumer or a decision to go public — 
 - **M5** — embeddings (`PropertyKey<float[]>` + ANN), learnable edge weights, provenance — plus
   the falsifiability gate: a non-RLB second consumer (`samples/Topos.Samples.ChatMemory`).
 - **M6** — s-walk traversal, label propagation, triangle count, modularity.
+- **M9** — `Topos.Hypergraph.Knowledge` package: layer-1 role-aware directed traversal
+  (`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers`, `AddIncidence<TRole>`), generalizing
+  a pattern three independent consumers (ChatMemory, RLB, NexusVerifier) had each hand-rolled. Exit
+  criterion met: RLB's `ToposGraphProjection` now calls into it instead of its own copy.
 
-177 tests pass across the kernel, persistence, sample, and GDS-parity suites. Topos is also a live
-`ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target — see
-`Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live Neo4j
-round-trips) passing against it.
+179 tests pass across the kernel, persistence, sample, Knowledge, and GDS-parity suites. Topos is
+also a live `ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target —
+see `Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live
+Neo4j round-trips) passing against it.
 
 ## Relationship to other projects
 

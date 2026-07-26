@@ -1,6 +1,6 @@
-# Session Handoff — Topos (M0–M6 implemented; M8 API-stability scope done)
+# Session Handoff — Topos (M0–M6 implemented; M8 API-stability scope done; M9 implemented)
 
-**Last updated:** 2026-07-25
+**Last updated:** 2026-07-26
 **Purpose:** Comprehensive briefing so the next session (in Topos, possibly with a different
 agent) can resume without re-deriving context. **This is the first document to read.**
 
@@ -18,14 +18,18 @@ purpose-fit for AI / agent memory. The name (*topos* = Greek for "place/location
 than neural-network weights.
 
 **Status: M0–M6 implemented and tested. M7 (spectral) deferred by design. M8's API-stability
-scope is done** — Nasser dogfooded via Rich-Learning-Base first, then a second real consumer
-(NexusVerifier) produced six concrete API-stability findings; resolving those plus a broader
-public-surface audit became M8's two passes, both done 2026-07-25 (`docs/DECISIONS.md`'s three
-2026-07-25 entries, the last one an explicit closure decision). **"M8 done" means the
-API-stability work — HIF interchange, a docs site, and NuGet-publish readiness are separately
-deferred, each gated on a condition that hasn't arrived (a forcing consumer, or a go-public
-decision), not part of what closed.** See §4 for what that means concretely and §5 for what to
-do about it.
+scope is done. M9 is implemented (2026-07-26).** — Nasser dogfooded via Rich-Learning-Base
+first, then a second real consumer (NexusVerifier) produced six concrete API-stability findings;
+resolving those plus a broader public-surface audit became M8's two passes, both done 2026-07-25
+(`docs/DECISIONS.md`'s three 2026-07-25 entries, the last one an explicit closure decision).
+**"M8 done" means the API-stability work — HIF interchange, a docs site, and NuGet-publish
+readiness are separately deferred, each gated on a condition that hasn't arrived (a forcing
+consumer, or a go-public decision), not part of what closed.** M9 (`Topos.Hypergraph.Knowledge`,
+layer-1 role-aware directed traversal) was scoped 2026-07-25 and **built and closed out
+2026-07-26**: `DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers`/`AddIncidence<TRole>`
+shipped with 11 new tests, and its exit criterion is met — RLB's `ToposGraphProjection` now
+calls into the new package instead of its own hand-rolled copy, with RLB's 346-test suite passing
+unchanged. See §4 for what that means concretely and §5 for what to do about it.
 
 Two things worth internalizing before anything else:
 - **The spec was approved and implemented — this is not still the investigation phase.**
@@ -50,10 +54,12 @@ Two things worth internalizing before anything else:
 ├── Topos.sln
 ├── src/
 │   ├── Topos.Hypergraph/             # the kernel (M0–M6, see §3)
-│   └── Topos.Hypergraph.Persistence/ # tiered LRU+snapshot persistence (M4 package split)
+│   ├── Topos.Hypergraph.Persistence/ # tiered LRU+snapshot persistence (M4 package split)
+│   └── Topos.Hypergraph.Knowledge/   # M9: layer-1 role-aware directed traversal (new 2026-07-26)
 ├── tests/
 │   ├── Topos.Hypergraph.Tests/
 │   ├── Topos.Hypergraph.Persistence.Tests/
+│   ├── Topos.Hypergraph.Knowledge.Tests/  # M9 package tests (new 2026-07-26)
 │   └── Topos.Tests.GdsOracle/        # Neo4j GDS-parity oracle — docs/GDS_ORACLE_SETUP.md
 ├── samples/
 │   └── Topos.Samples.ChatMemory(.Tests)/  # M5's non-RLB second consumer
@@ -71,9 +77,8 @@ Two things worth internalizing before anything else:
     └── reactions/                            # verbatim GPT/Claude review rounds
 ```
 
-177 tests pass across the kernel, persistence, sample, and GDS-parity suites (up from 173 before
-2026-07-25's two M8 passes — 3 new `Handle.Invalid` regression tests, 1 new `SWalk.Reachable`
-eager-throw regression test). Build:
+179 tests pass across the kernel, persistence, sample, Knowledge, and GDS-parity suites (up from
+177 before 2026-07-26's M9 build — 11 new tests in `Topos.Hypergraph.Knowledge.Tests`). Build:
 `dotnet build Topos.sln`. Test: `dotnet test Topos.sln`.
 
 ---
@@ -194,7 +199,7 @@ declared-complete scope; nothing further is pending on the API-stability front.
 
 ## 4. The three things that matter most for the next session
 
-### 4.1 Roadmap state: M6 done, M7 skip, M8's API-stability scope is done (closed 2026-07-25), M9 scoped (2026-07-25, not started)
+### 4.1 Roadmap state: M6 done, M7 skip, M8's API-stability scope is done (closed 2026-07-25), M9 implemented (2026-07-26)
 
 **2026-07-25 update:** the six `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` findings were
 resolved this session — see `docs/DECISIONS.md`'s first 2026-07-25 entry for the full list of
@@ -218,15 +223,28 @@ readiness (license + package metadata — Nasser's call, not made yet).
 scope it now rather than wait or start the NexusVerifier thread first. M9 is a new
 `Topos.Hypergraph.Knowledge` package: layer-1 role-aware directed traversal
 (`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers` over `IHypergraphQuery`). The forcing
-evidence is unusually strong — investigating this surfaced a **third** independent reinvention of
+evidence was unusually strong — investigating this surfaced a **third** independent reinvention of
 the same pattern beyond the two (ChatMemory, NexusVerifier) already on record: RLB's own
-`RichLearning.V2.Learning.ToposGraphProjection.cs` already contains a full generic
+`RichLearning.V2.Learning.ToposGraphProjection.cs` already contained a full generic
 `DirectedBfs`/`DirectedShortestPath` implementation written entirely against Topos's public API
-(zero RLB types) — meaning M9's core is largely an extraction-and-generalization of ~40
-already-working lines, not new design. **Scoped only — no code exists yet.** If a fresh session
-picks this up, the natural first step is refactoring RLB's `ToposGraphProjection` to call the new
-package instead of maintaining its own copy (the exit criterion `docs/DECISIONS.md` already
-names), confirming RLB's 346-test suite still passes.
+(zero RLB types) — meaning M9's core was largely an extraction-and-generalization of ~40
+already-working lines, not new design.
+
+**M9 was built and its exit criterion met 2026-07-26** (see `docs/DECISIONS.md`'s "M9
+IMPLEMENTED" entry) — Nasser asked to start M9 and to do the RLB refactor in the same session
+rather than splitting them. `src/Topos.Hypergraph.Knowledge/` now exists: `DirectedTraversal.cs`
+(`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers`, as extension methods on
+`IHypergraphQuery`) and `RoleExtensions.cs` (`AddIncidence<TRole>` plus `TRole`-typed traversal
+overloads, turning `docs/ROLE_CONVENTIONS.md`'s byte-backed-enum convention into real code, with
+an `ArgumentException` guard if `TRole` isn't actually byte-backed). 11 new tests in
+`tests/Topos.Hypergraph.Knowledge.Tests/`. **RLB's `ToposGraphProjection.cs` is refactored**: its
+three private methods (`DirectedBfs`, `DirectedShortestPath`, `Reconstruct`) are deleted, replaced
+by calls into `Topos.Hypergraph.Knowledge.DirectedTraversal`; `RichLearning.V2.csproj` gained the
+new `ProjectReference`. **RLB's 346-test suite passes unchanged** — confirmed by running
+`dotnet test tests/RichLearning.V2.Tests`, same result as before the refactor. Nothing further is
+pending on M9; if a future session wants to extend it (e.g. surfacing role-aware cycle detection,
+or the `Knowledge` package NexusVerifier's chainer could also adopt), that needs a new forcing
+signal, not speculative extension.
 
 M7 (spectral machinery) stays deferred — three voices (investigation + both reviewers) agreed,
 and nothing since has forced it. Don't start it without a concrete forcing requirement.
@@ -261,10 +279,10 @@ methodology that should gate any new attempt, per the project's own stated lesso
 
 - **If Nasser wants to continue the roadmap** → M8's API-stability scope is closed (2026-07-25);
   what's left there is gated (HIF/docs-site need a forcing consumer or go-public decision;
-  NuGet-publish needs a license choice). **M9 is scoped but not implemented** — the natural next
-  slice if continuing the roadmap: refactor RLB's `ToposGraphProjection` to call the new
-  `Topos.Hypergraph.Knowledge` package instead of its own hand-rolled `DirectedBfs`/
-  `DirectedShortestPath`, per the exit criterion in `docs/DECISIONS.md`. M7 stays skipped absent
+  NuGet-publish needs a license choice). **M9 is implemented and its exit criterion is met**
+  (2026-07-26) — `Topos.Hypergraph.Knowledge` exists, RLB's `ToposGraphProjection` consumes it, and
+  RLB's suite passes unchanged. There is no pending M9 work; a next roadmap slice would be a new
+  milestone (M10+) with its own forcing signal, not a continuation of M9. M7 stays skipped absent
   a forcing requirement. Don't restart API-stability work without a new forcing signal.
 - **If Nasser wants to continue dogfooding via RLB** → `tools/ToposHyperedgeDemo` in the RLB
   repo is the existing hands-on entry point; RLB's real Neo4j data has no hyperedges yet, which
@@ -302,6 +320,12 @@ methodology that should gate any new attempt, per the project's own stated lesso
    in mind before assuming the RLB integration is being exercised under realistic conditions
    just because the tests pass. Synthetic test coverage and unit-test scenarios are solid; real
    production data exercising the hyperedge path specifically is not yet demonstrated.
+7. **GLM-5.2's role in this repo is now a standing, enforced boundary, not an informal norm** —
+   `docs/GLM_DOCUMENTATION_GUIDELINES.md` (new 2026-07-26): documentation only, never `src/` code,
+   including doc comments (a stricter line than a past session's XML-doc-coverage pass, which did
+   touch `.cs` files — that practice is now retired). If a future session sees GLM edit anything
+   under `src/`/`tests/`/`samples/`/`benchmarks/`/`tools/`, that's a violation of this guideline,
+   not a return to old practice.
 
 ---
 

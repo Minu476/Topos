@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Topos.Hypergraph.Knowledge</RootNamespace>
+    <AssemblyName>Topos.Hypergraph.Knowledge</AssemblyName>
+    <PackageId>Topos.Hypergraph.Knowledge</PackageId>
+    <Description>
+      M9 packaging split (spec §6 M9, docs/DECISIONS.md 2026-07-25 "M9 SCOPED"): layer-1
+      role-aware directed traversal over Topos.Hypergraph's IHypergraphQuery — DirectedBfs,
+      DirectedShortestPath, RoleFilteredMembers, plus the docs/ROLE_CONVENTIONS.md
+      byte-backed-enum pattern as real code (AddIncidence&lt;TRole&gt;). No kernel changes; pure
+      consumer of the existing public surface. Generalizes a pattern three independent real
+      consumers (Rich-Learning-Base, NexusVerifier, Topos.Samples.ChatMemory) already hand-rolled.
+    </Description>
+    <Authors>Nasser Towfigh</Authors>
+    <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
+    <Version>0.1.0-m9</Version>
+  </PropertyGroup>
+
+</Project>

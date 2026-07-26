@@ -16,23 +16,24 @@ memory, and provenance.
 > weights.** In category theory, a *topos* is a deep theory of structured contexts — a fitting
 > ambition for a foundational substrate that many domains build on.
 
-**Current status (2026-07-25): M0–M6 implemented and tested; M7 (spectral) deferred by design;
-M8's API-stability scope is done.** The spec was approved (GPT + Claude passes,
+**Current status (2026-07-26): M0–M6 implemented and tested; M7 (spectral) deferred by design;
+M8's API-stability scope is done; M9 implemented.** The spec was approved (GPT + Claude passes,
 `docs/reactions/`) before implementation started. Topos is a live `ProjectReference` in
-Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`) and has a second real consumer
-(NexusVerifier's AND-OR proof-search chainer) — see `docs/SESSION_HANDOFF.md` for the precise
-carry-on state and `docs/DECISIONS.md`'s three 2026-07-25 entries for what M8 resolved and why
-it's closed. **M8's other spec items — HIF interchange, a docs site, and NuGet-publish readiness
-— are deliberately deferred**, each gated on a condition that hasn't arrived (a forcing consumer,
-or a decision to go public); they are not part of what "M8 done" means here.
+Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`, now also referencing
+`Topos.Hypergraph.Knowledge`) and has a second real consumer (NexusVerifier's AND-OR proof-search
+chainer) — see `docs/SESSION_HANDOFF.md` for the precise carry-on state and `docs/DECISIONS.md`'s
+three 2026-07-25 entries for what M8 resolved and why it's closed. **M8's other spec items — HIF
+interchange, a docs site, and NuGet-publish readiness — are deliberately deferred**, each gated on
+a condition that hasn't arrived (a forcing consumer, or a decision to go public); they are not
+part of what "M8 done" means here.
 
-**M9 is now scoped (2026-07-25), not started.** A new `Topos.Hypergraph.Knowledge` package —
-layer-1 role-aware directed traversal (`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers`
-over `IHypergraphQuery`), generalizing a pattern three independent real consumers already
-hand-rolled (ChatMemory, RLB's own `ToposGraphProjection`, NexusVerifier). See
-`docs/SPECIFICATION.md` §6's M9 row and `docs/DECISIONS.md`'s "M9 SCOPED" entry for the full
-scope, exit criterion, and why the forcing evidence is unusually strong. No code exists yet —
-don't start implementing without checking with Nasser first.
+**M9 is implemented (2026-07-26).** A new `Topos.Hypergraph.Knowledge` package — layer-1
+role-aware directed traversal (`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers` over
+`IHypergraphQuery`, plus `AddIncidence<TRole>`), generalizing a pattern three independent real
+consumers already hand-rolled (ChatMemory, RLB's own `ToposGraphProjection`, NexusVerifier). Its
+exit criterion is met: RLB's `ToposGraphProjection` now calls into this package instead of
+maintaining its own copy, and RLB's 346-test suite passes unchanged. See `docs/SPECIFICATION.md`
+§6's M9 row and `docs/DECISIONS.md`'s "M9 IMPLEMENTED" entry for full detail.
 
 The namespace is `Topos.Hypergraph`, locked for M0–M3 per `docs/DECISIONS.md` §4.1 — the deeper
 "incidence model" reframe stays a reach goal, not adopted.
@@ -168,10 +169,13 @@ across sessions and is authoritative when FSDE is cold.
 │   │                                  # IHypergraphQuery, traversal, reification, views/set
 │   │                                  # algebra, embeddings/learnable edges/provenance,
 │   │                                  # s-walk/label-propagation/triangle-count/modularity
-│   └── Topos.Hypergraph.Persistence/ # tiered LRU+snapshot persistence (packaging split at M4)
+│   ├── Topos.Hypergraph.Persistence/ # tiered LRU+snapshot persistence (packaging split at M4)
+│   └── Topos.Hypergraph.Knowledge/   # M9: layer-1 role-aware directed traversal (DirectedBfs/
+│                                      # DirectedShortestPath/RoleFilteredMembers, AddIncidence<TRole>)
 ├── tests/
 │   ├── Topos.Hypergraph.Tests/           # kernel unit + fuzz + concurrency + stress tests
 │   ├── Topos.Hypergraph.Persistence.Tests/
+│   ├── Topos.Hypergraph.Knowledge.Tests/  # M9 package tests
 │   └── Topos.Tests.GdsOracle/             # Neo4j GDS-parity oracle — see docs/GDS_ORACLE_SETUP.md
 ├── samples/
 │   └── Topos.Samples.ChatMemory(.Tests)/  # M5's non-RLB second consumer (falsifiability gate)
@@ -194,15 +198,18 @@ across sessions and is authoritative when FSDE is cold.
     │                                  # the M8 API-stability review — 6 source-cited findings.
     ├── ROLE_CONVENTIONS.md           # M8: the documented byte-backed-enum role pattern
     │                                  # (resolves finding #3) — no kernel change, consumer guidance
+    ├── GLM_DOCUMENTATION_GUIDELINES.md # standing role boundary: GLM-5.2 does documentation only,
+    │                                  # never src/ code — read once per session, not refreshed daily
     └── reactions/                    # verbatim GPT/Claude review rounds
 ```
 
 **M0–M6 are implemented and tested.** **M7 is deferred by design** (spectral
 machinery — no domain forces it yet). **M8's API-stability scope is done** (two passes: the
 NexusVerifier-findings freeze decisions, then a broader public-surface audit); HIF interchange,
-docs site, and NuGet-publish readiness are separately deferred, not blockers. **M9 is scoped but
-not started** (layer-1 role-aware directed traversal, `docs/SPECIFICATION.md` §6) — see
-`docs/SESSION_HANDOFF.md` §4.1 and `docs/DECISIONS.md`'s four 2026-07-25 entries.
+docs site, and NuGet-publish readiness are separately deferred, not blockers. **M9 is implemented**
+(layer-1 role-aware directed traversal, `docs/SPECIFICATION.md` §6, `Topos.Hypergraph.Knowledge`)
+— exit criterion met, RLB's `ToposGraphProjection` now consumes it — see
+`docs/SESSION_HANDOFF.md` §4.1 and `docs/DECISIONS.md`'s "M9 IMPLEMENTED" (2026-07-26) entry.
 
 ---
 

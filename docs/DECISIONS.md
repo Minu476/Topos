@@ -522,6 +522,55 @@ In priority order:
   is *extended*, not reopened — M0–M8's own scopes/exit-criteria are untouched). No code yet;
   implementation is a separate, not-yet-started step.
 
+### 2026-07-26 — M9 IMPLEMENTED: `Topos.Hypergraph.Knowledge` built, exit criterion met
+
+- **Decider:** Nasser (explicit go-ahead to start M9 and to do the RLB refactor in the same
+  session), executed by Sonnet 5.
+- **Question:** M9 was scoped but not started (previous entry). Build it, and if so, complete the
+  exit criterion (refactor RLB's `ToposGraphProjection` to consume it) in the same pass, or defer
+  the RLB side to a separate session?
+- **Decision:** built the full scoped surface and completed the exit criterion in one pass — see
+  below for what shipped.
+- **What shipped:**
+  - New package `src/Topos.Hypergraph.Knowledge/` (own assembly, `ProjectReference` to
+    `Topos.Hypergraph` only — no kernel changes, per scope):
+    - `DirectedTraversal.cs` — `DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers`, written
+      as extension methods on `IHypergraphQuery` (nicer call-site ergonomics than a plain static
+      method; still pure consumer of the public surface, not new kernel API). Directly generalizes
+      RLB's `ToposGraphProjection.DirectedBfs`/`DirectedShortestPath` (parameterized `fromRole`/
+      `toRole` instead of hardcoded Anchor=0/Target=2) and `ChatMemory.EntitiesMentionedIn`
+      (`RoleFilteredMembers`).
+    - `RoleExtensions.cs` — `AddIncidence<TRole>` plus `TRole`-typed overloads of the three
+      traversal methods, `where TRole : unmanaged, Enum`, turning `docs/ROLE_CONVENTIONS.md`'s
+      byte-backed-enum convention into real code. Converts via `Unsafe.As<TRole, byte>` (the "free"
+      cast the convention doc describes) but throws `ArgumentException` if `TRole`'s underlying
+      type isn't actually 1 byte, rather than silently truncating a wider enum — a real caller
+      mistake worth surfacing, not a case to paper over.
+  - `tests/Topos.Hypergraph.Knowledge.Tests/` — 11 new tests: Anchor/Condition/Target chain
+    traversal (mirroring `HypergraphKernelTests.NAryHyperedge_RoundTripsAllMembers_InOrdinalOrder`,
+    per the previous entry's own citation), explicit proof that Condition members are excluded
+    from directed reachability, unreachable/self-path edge cases, `RoleFilteredMembers` parity with
+    `ChatMemory.EntitiesMentionedIn`'s shape, and the `TRole` generic overloads (including the
+    non-byte-backed-enum throw path).
+  - **Exit criterion met:** `Rich-Learning-Base/src/RichLearning.V2/Learning/
+    ToposGraphProjection.cs` refactored to call `Topos.Hypergraph.Knowledge.DirectedTraversal`
+    instead of maintaining its own private `DirectedBfs`/`DirectedShortestPath`/`Reconstruct` —
+    those three methods are deleted from RLB entirely. `RichLearning.V2.csproj` gained a second
+    `ProjectReference` to `Topos.Hypergraph.Knowledge`. **RLB's 346-test suite passes unchanged**
+    (`dotnet test tests/RichLearning.V2.Tests`), confirming the drop-in replacement is behaviorally
+    identical, not parallel scaffolding — the same falsifiability standard M5 set.
+  - Full Topos suite (`dotnet test Topos.sln`, GDS-oracle suite excluded — needs its Docker
+    container, unrelated to this change) green: 141 kernel + 18 persistence + 9 ChatMemory + 11 new
+    Knowledge = 179 tests, up from 177 before M9.
+- **Rationale:** the previous entry already established this was extraction-and-generalization of
+  already-working code, not new design — the two passes (build + RLB refactor) together are the
+  same low-risk shape, and Nasser asked for both in one session rather than splitting them.
+- **What it changes:** `src/Topos.Hypergraph.Knowledge/` (new), `tests/
+  Topos.Hypergraph.Knowledge.Tests/` (new), `Topos.sln` (both added), `Rich-Learning-Base/src/
+  RichLearning.V2/Learning/ToposGraphProjection.cs` (refactored, three private methods deleted),
+  `Rich-Learning-Base/src/RichLearning.V2/RichLearning.V2.csproj` (new `ProjectReference`). No
+  changes to `Topos.Hypergraph`'s kernel or public surface — M8's API-stability freeze stands.
+
 ---
 
 ## 7. Decision log format for future entries
