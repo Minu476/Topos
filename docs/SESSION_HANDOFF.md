@@ -66,6 +66,11 @@ Two things worth internalizing before anything else:
 ├── benchmarks/
 │   └── Topos.Hypergraph.Benchmarks/  # BenchmarkDotNet suite
 └── docs/
+    ├── CONCEPTS.md, GETTING_STARTED.md, API_REFERENCE.md, USAGE_PATTERNS.md  # USER-FACING docs (new
+    │                                  # 2026-07-26, GLM-5.2): the mental model, a runnable walkthrough,
+    │                                  # a hand-written public-API catalog, and a usage-patterns guide.
+    │                                  # README.md is the front door. The first user-facing docs in the repo;
+    │                                  # the rest of docs/ predates them and is investigation/spec/process.
     ├── BASE_INVESTIGATION.md, AGENT_MEMORY_COMPETITORS.md, SPECIFICATION.md, DECISIONS.md
     ├── M0_BENCHMARK_RESULTS_2026-07-24.md   # measured benchmark gate, COW→RWLS correction
     ├── PARADOX_COMPRESSION_SEARCH.md        # resolves spec §12 Q1

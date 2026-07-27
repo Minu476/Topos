@@ -9,6 +9,96 @@ provenance.
 > than neural-network weights.** In category theory, a *topos* is a deep theory of structured
 > contexts — a fitting ambition for a foundational substrate that many domains build on.
 
+| | |
+|---|---|
+| **Packages** | `Topos.Hypergraph` (kernel + algorithms) · `Topos.Hypergraph.Persistence` (save/load) · `Topos.Hypergraph.Knowledge` (directed/role-aware traversal) |
+| **Target** | .NET 10 (`net10.0`), C# with `Nullable` + `ImplicitUsings` |
+| **Status** | M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done · M9 implemented. 179 tests pass. |
+| **License** | Not yet chosen — NuGet publishing is gated on this (see `docs/DECISIONS.md`, "M8 CLOSED" entry). |
+
+---
+
+## Get started in 5 minutes
+
+Topos targets **.NET 10** and is **not yet on NuGet** — reference it from source via a
+`ProjectReference`: `[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]`
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="path/to/Topos/src/Topos.Hypergraph/Topos.Hypergraph.csproj" />
+  <!-- add Topos.Hypergraph.Knowledge for directed/role-aware traversal -->
+  <!-- add Topos.Hypergraph.Persistence for save/load -->
+</ItemGroup>
+```
+
+Build a kernel, model one n-ary relationship (one utterance mentioning three entities = **one
+hyperedge**, not three binary edges), and query it back:
+
+```csharp
+using Topos.Hypergraph;
+
+var kernel = new HypergraphKernel();
+
+// Define your domain's roles as a byte-backed enum (docs/ROLE_CONVENTIONS.md).
+public enum TripRole : byte { Speaker = 0, Mention = 1 }
+
+Handle alice = kernel.CreateVertex();
+Handle kyoto = kernel.CreateVertex();
+Handle nara  = kernel.CreateVertex();
+Handle osaka = kernel.CreateVertex();
+
+// One hyperedge — alice mentioned kyoto, nara, and osaka together, in one turn.
+Handle mention = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(mention, alice, (byte)TripRole.Speaker, ordinal: 0);
+kernel.AddIncidence(mention, kyoto, (byte)TripRole.Mention, ordinal: 1);
+kernel.AddIncidence(mention, nara,  (byte)TripRole.Mention, ordinal: 2);
+kernel.AddIncidence(mention, osaka, (byte)TripRole.Mention, ordinal: 3);
+
+// Every algorithm on IHypergraphQuery works off the kernel directly.
+bool reachable = ((IHypergraphQuery)kernel).IsReachable(alice, osaka);   // true
+```
+
+Continue end-to-end (typed properties, save/reload, directed traversal) in
+**[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)**.
+
+Verify your environment against the whole solution: `[verified:src=Topos.sln]`
+
+```bash
+dotnet build Topos.sln
+dotnet test Topos.sln
+```
+
+---
+
+## Documentation
+
+### Using Topos
+
+| Document | Audience | Purpose |
+|---|---|---|
+| [`docs/CONCEPTS.md`](docs/CONCEPTS.md) | **New users — start here** | The mental model: the four primitives (`Handle`/`Vertex`/`Incidence`/`PropertyKey<T>`), the two invariants, `Roles` vs. `VertexRoles`, the layer architecture, what Topos is *not*. |
+| [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | New users | A runnable walkthrough: create a kernel → typed properties → n-ary hyperedge → query → save/reload → directed traversal. |
+| [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | All users | Hand-written prose catalog of every public type, grouped by layer/package. Includes the internal-types-not-public-API list. |
+| [`docs/USAGE_PATTERNS.md`](docs/USAGE_PATTERNS.md) | Implementers | How to model common agent-memory shapes: n-ary facts, reification, per-cell data, composable views, semantic recall, learnable edges, persistence, directed traversal. |
+| [`docs/ROLE_CONVENTIONS.md`](docs/ROLE_CONVENTIONS.md) | Implementers | The `byte`-backed-enum pattern for domain role bytes (settled M8). |
+
+### Why Topos exists — the design record
+
+| Document | Purpose |
+|---|---|
+| [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | The consolidated spec — approved by two review passes (`docs/reactions/`) before implementation. Opens with the verified workload case, the 4-primitive contract, the layer architecture, the M0–M9 roadmap, and §11's locked/open quick-reference. |
+| [`docs/BASE_INVESTIGATION.md`](docs/BASE_INVESTIGATION.md) | Source-verified analysis of 10 libraries + the proposed storage contract. The artifact the spec was built from. |
+| [`docs/AGENT_MEMORY_COMPETITORS.md`](docs/AGENT_MEMORY_COMPETITORS.md) | Source-verified survey of Zep/Graphiti, mem0, Letta, Cognee — answers "did the field reject hypergraphs, or never try them?" |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | The decision log: what reviewers locked vs. left open, what's Nasser's call, and every milestone adjudication. |
+| [`docs/M0_BENCHMARK_RESULTS_2026-07-24.md`](docs/M0_BENCHMARK_RESULTS_2026-07-24.md) | The measured M0 benchmark gate and the benchmark-driven COW→per-pool-lock concurrency correction. |
+| [`docs/GDS_ORACLE_SETUP.md`](docs/GDS_ORACLE_SETUP.md) | The Neo4j GDS correctness-oracle setup (Topos's standard algorithms are verified against GDS) + the local Neo4j credential-isolation writeup. |
+| [`docs/GDS_ALGORITHM_TIERS.md`](docs/GDS_ALGORITHM_TIERS.md) | Resolves spec §12 Q9 — GDS Community/Enterprise tier per algorithm. |
+| [`docs/PARADOX_COMPRESSION_SEARCH.md`](docs/PARADOX_COMPRESSION_SEARCH.md) | Resolves spec §12 Q1 — the "paradox-compression" citation traced to an unrelated project. |
+| [`docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md`](docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md) | Six API-stability findings from the second real consumer — the M8 input. |
+| [`docs/SESSION_HANDOFF.md`](docs/SESSION_HANDOFF.md) | Carry-on context across sessions — the first doc any agent reads on launch. |
+
+---
+
 ## Why this exists
 
 Every production-grade hypergraph library in the ecosystem was built for pre-AI workloads
@@ -19,13 +109,15 @@ ten libraries and standards, and finds the AI-native gap confirmed by one decisi
 signal: Apple's October 2025 acqui-hire of Kuzu — the closest existing thing to an
 AI-oriented embedded graph database — for on-device AI / privacy-focused graph processing.
 
+---
+
 ## Status
 
 **M0–M6 implemented; M7 (spectral) deferred by design; M8's API-stability scope is done; M9
-implemented.** The specification (`docs/SPECIFICATION.md`) was reviewed and approved (GPT +
-Claude passes, `docs/reactions/`) before implementation started; `docs/DECISIONS.md` tracks what's
-locked vs. still open. M8's other spec items (HIF interchange, a docs site, NuGet publishing) are
-deliberately deferred pending a forcing consumer or a decision to go public — not in progress.
+implemented.** The specification (`docs/SPECIFICATION.md`) was reviewed and approved before
+implementation started; `docs/DECISIONS.md` tracks what's locked vs. still open. M8's other spec
+items (HIF interchange, a docs site, NuGet publishing) are deliberately deferred pending a forcing
+consumer or a decision to go public — not in progress.
 
 - **M0** — storage kernel: `Handle`/`Vertex`/`Incidence`/`PropertyKey<T>`, the 2 invariants, SWMR
   concurrency (`ReaderWriterLockSlim`-per-pool). Benchmark-gated per spec §6, including a
@@ -47,6 +139,8 @@ deliberately deferred pending a forcing consumer or a decision to go public — 
 also a live `ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target —
 see `Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live
 Neo4j round-trips) passing against it.
+
+---
 
 ## Relationship to other projects
 
@@ -82,15 +176,6 @@ non-shell processes like FSDE's launchd daemon via a small wrapper script that r
 Keychain entry. Full incident writeup, including why a hardcoded `.env` copy is the wrong pattern
 here, in `docs/GDS_ORACLE_SETUP.md`.
 
-## Documents
-
-| Document | Purpose |
-|---|---|
-| [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | **The consolidated spec — approved by both GPT and Claude review passes** (`docs/reactions/`) before implementation started. Opens with the verified RLB empirical case, incorporates the 4-primitive contract, GPT's 5-layer architecture, and the M0–M8 roadmap with Neo4j GDS verification + falsifiable M5. §12 lists the residual open engineering questions (adjudication items, not blockers). |
-| [`docs/BASE_INVESTIGATION.md`](docs/BASE_INVESTIGATION.md) | Source-verified analysis of 10 libraries + the proposed storage contract + roadmap skeleton. The artifact Fable and GPT enhance into the final spec. |
-| [`docs/AGENT_MEMORY_COMPETITORS.md`](docs/AGENT_MEMORY_COMPETITORS.md) | Source-verified survey of the four systems competing for the agent-memory niche (Zep/Graphiti, mem0, Letta, Cognee) — answers "did the field reject hypergraphs, or never consider them?" Includes the n-ary-DB capability matrix (TypeDB/TigerGraph) and hypergraph-research-prototype preemption. |
-| [`docs/GDS_ORACLE_SETUP.md`](docs/GDS_ORACLE_SETUP.md) | How the GDS-parity oracle container is set up, and the local Neo4j credential-isolation writeup above. |
-
 ## Provenance and integrity
 
 The investigation docs and the original specification draft (`docs/BASE_INVESTIGATION.md`,
@@ -100,7 +185,7 @@ under a source-verification discipline — every claim tagged `[verified:src=…
 same standard NexusVerifier's `SOLVED_PROBLEMS.md` enforces for formal proofs (verified vs.
 axiom-scaffolded vs. `sorry`). No unsourced assertions.
 
-The specification was then reviewed and approved by GPT and Claude (`docs/reactions/`,
+The specification was then reviewed and approved by two review passes (`docs/reactions/`,
 `docs/DECISIONS.md`) before implementation started. The codebase and later working docs have
 multiple AI contributors across sessions rather than a single author — M0 is explicitly credited
 "lead dev: Claude/Sonnet" in its commit message, and several `docs/*.md` files (e.g.

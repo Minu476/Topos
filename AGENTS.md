@@ -182,6 +182,14 @@ across sessions and is authoritative when FSDE is cold.
 ├── benchmarks/
 │   └── Topos.Hypergraph.Benchmarks/  # BenchmarkDotNet suite — see docs/M0_BENCHMARK_RESULTS_*.md
 └── docs/
+    ├── CONCEPTS.md                   # USER-FACING: the mental model (4 primitives, 2 invariants,
+    │                                  # Roles vs. VertexRoles, layers) — start here for "what is this"
+    ├── GETTING_STARTED.md            # USER-FACING: runnable walkthrough kernel→properties→hyperedge→
+    │                                  # query→save/load→directed traversal
+    ├── API_REFERENCE.md              # USER-FACING: hand-written prose catalog of every public type
+    │                                  # (+ the internal-types-not-public-API list)
+    ├── USAGE_PATTERNS.md             # USER-FACING: n-ary facts, reification, per-cell data, views,
+    │                                  # semantic recall, learnable edges, persistence, directed traversal
     ├── BASE_INVESTIGATION.md         # the 10-library source-verified analysis + contract
     ├── AGENT_MEMORY_COMPETITORS.md   # the Zep/mem0/Letta/Cognee survey + n-ary-DB matrix
     ├── SPECIFICATION.md              # the consolidated spec — approved by GPT + Claude
