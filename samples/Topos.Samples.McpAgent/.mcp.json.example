@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "topos": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "src/Topos.Hypergraph.Mcp/Topos.Hypergraph.Mcp.csproj",
+        "-c",
+        "Release",
+        "--no-build"
+      ]
+    }
+  }
+}

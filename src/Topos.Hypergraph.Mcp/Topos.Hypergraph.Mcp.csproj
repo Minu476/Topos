@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+    <ProjectReference Include="..\Topos.Hypergraph.Knowledge\Topos.Hypergraph.Knowledge.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="1.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Topos.Hypergraph.Mcp</RootNamespace>
+    <AssemblyName>Topos.Hypergraph.Mcp</AssemblyName>
+    <PackageId>Topos.Hypergraph.Mcp</PackageId>
+    <Description>
+      M10 (docs/MCP_SERVER_SPEC.md, approved 2026-07-27): a Model Context Protocol server exposing
+      Topos.Hypergraph's kernel and Topos.Hypergraph.Knowledge's role-aware traversal as MCP tools,
+      built on the official Microsoft ModelContextProtocol C# SDK. Stateful, single-session (one
+      HypergraphKernel per server process), stdio transport only. A thin JSON-RPC wrapper over
+      existing, tested primitives — no new graph logic, no kernel changes. Not exposed:
+      RestoreVertex (Invariant-1 bypass), AllIncidences (internal-iteration helper), HasCycle
+      (documented footgun on n-ary graphs, worse without the doc's warning visible to an agent).
+    </Description>
+    <Authors>Nasser Towfigh</Authors>
+    <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
+    <Version>0.1.0-m10</Version>
+  </PropertyGroup>
+
+</Project>

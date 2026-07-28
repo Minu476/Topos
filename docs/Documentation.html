@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Topos — Documentation</title>
+<meta name="author" content="Nasser Towfigh">
+<meta name="description" content="Combined user-facing documentation for the Topos typed-property hypergraph library for C#.">
+<meta name="generator" content="Topos docs/build_pdf.py (Markdown + Playwright)">
+<style>
+
+@page {
+  size: Letter;          /* US Letter */
+  margin: 18mm 16mm 18mm 16mm;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  font-family: "Charter", "Georgia", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: #1a1a1a;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Helvetica Neue", "Inter", "Helvetica", "Arial", sans-serif;
+  color: #0f172a;
+  line-height: 1.25;
+  font-weight: 600;
+}
+h1 {
+  font-size: 22pt;
+  margin: 0 0 14pt 0;
+  padding-bottom: 6pt;
+  border-bottom: 2pt solid #0f172a;
+  break-before: page;            /* each H1 starts a new page */
+  page-break-before: always;
+}
+h1:first-of-type { break-before: avoid; page-break-before: avoid; }  /* title needs no leading blank page */
+h2 {
+  font-size: 15pt;
+  margin: 22pt 0 8pt 0;
+  padding-bottom: 3pt;
+  border-bottom: 0.5pt solid #cbd5e1;
+  break-after: avoid; page-break-after: avoid;
+}
+h3 { font-size: 12.5pt; margin: 16pt 0 6pt 0; color: #1e293b; break-after: avoid; page-break-after: avoid; }
+h4 { font-size: 11pt; margin: 12pt 0 4pt 0; color: #334155; break-after: avoid; page-break-after: avoid; }
+p { margin: 0 0 8pt 0; orphans: 3; widows: 3; }
+ul, ol { margin: 0 0 8pt 0; padding-left: 22pt; }
+li { margin: 2pt 0; }
+li > p { margin: 2pt 0; }
+code {
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 8.8pt;
+}
+p code, li code, td code {
+  background: #f1f5f9; padding: 0.5pt 3pt; border-radius: 2pt;
+  color: #be123c; word-break: break-word;
+}
+pre {
+  background: #f8fafc;
+  border: 0.5pt solid #e2e8f0;
+  border-radius: 3pt;
+  padding: 8pt 10pt;
+  margin: 8pt 0 12pt 0;
+  overflow-wrap: break-word; word-wrap: break-word;
+  white-space: pre-wrap;        /* wrap long lines instead of clipping */
+  break-inside: avoid; page-break-inside: avoid;
+}
+pre code { background: transparent; color: #0f172a; padding: 0; font-size: 8.6pt; line-height: 1.4; }
+blockquote {
+  margin: 8pt 0 12pt 0; padding: 6pt 12pt;
+  border-left: 3pt solid #94a3b8; background: #f8fafc;
+  color: #334155; font-size: 9.8pt;
+  break-inside: avoid; page-break-inside: avoid;
+}
+blockquote p { margin: 3pt 0; }
+table {
+  border-collapse: collapse; width: 100%; margin: 8pt 0 12pt 0;
+  font-size: 9.2pt; break-inside: avoid; page-break-inside: avoid;
+}
+th, td { border: 0.5pt solid #cbd5e1; padding: 4pt 7pt; text-align: left; vertical-align: top; }
+th { background: #f1f5f9; font-weight: 600; font-family: "Helvetica Neue", sans-serif; }
+tbody tr:nth-child(even) { background: #fafbfc; }
+a { color: #1d4ed8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+hr { border: none; border-top: 0.5pt solid #cbd5e1; margin: 16pt 0; }
+body > h1:first-child {
+  font-size: 26pt; border-bottom: 3pt solid #0f172a; margin-bottom: 6pt;
+}
+strong { color: #0f172a; font-weight: 600; }
+em { color: #1e293b; }
+
+</style>
+</head>
+<body>
+<h1 id="topos-documentation">Topos — Documentation</h1>
+<blockquote>
+<p><strong>One combined file</strong> for all user-facing Topos documentation: the mental model, a runnable
+walkthrough, the full API reference, and usage patterns. The engineering record
+(<code>SPECIFICATION.md</code>, <code>DECISIONS.md</code>) lives separately — this is the user manual.</p>
+<p><strong>Status:</strong> M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done ·
+M9 implemented. 179 tests pass. License: <strong>MIT</strong> (decided 2026-07-26). NuGet packages
+(<code>Topos.Hypergraph</code>, <code>Topos.Hypergraph.Persistence</code>, <code>Topos.Hypergraph.Knowledge</code>) are being
+prepped for first publish — see <a href="#1-installation">§1 Installation</a> for the current state.</p>
+</blockquote>
+<hr />
+<h2 id="table-of-contents">Table of contents</h2>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#1-installation">1. Installation</a></li>
+<li><a href="#11-from-nuget-recommended-once-published">1.1 From NuGet (recommended, once published)</a></li>
+<li><a href="#12-from-source-works-today">1.2 From source (works today)</a></li>
+<li><a href="#2-concepts-the-mental-model">2. Concepts — the mental model</a></li>
+<li><a href="#21-what-topos-is">2.1 What Topos is</a></li>
+<li><a href="#22-the-four-primitives">2.2 The four primitives</a></li>
+<li><a href="#23-the-two-invariants">2.3 The two invariants</a></li>
+<li><a href="#24-roles-vs-vertexroles-the-single-most-confusing-fork">2.4 Roles vs. VertexRoles — the single most confusing fork</a></li>
+<li><a href="#25-hyperedges-as-reified-vertices">2.5 Hyperedges as reified vertices</a></li>
+<li><a href="#26-the-layer-architecture">2.6 The layer architecture</a></li>
+<li><a href="#27-concurrency">2.7 Concurrency</a></li>
+<li><a href="#28-what-topos-is-not">2.8 What Topos is not</a></li>
+<li><a href="#3-getting-started">3. Getting started</a></li>
+<li><a href="#31-create-a-kernel-and-some-vertices">3.1 Create a kernel and some vertices</a></li>
+<li><a href="#32-define-typed-properties">3.2 Define typed properties</a></li>
+<li><a href="#33-build-an-n-ary-hyperedge">3.3 Build an n-ary hyperedge</a></li>
+<li><a href="#34-query-it-back">3.4 Query it back</a></li>
+<li><a href="#35-save-and-reload">3.5 Save and reload</a></li>
+<li><a href="#4-api-reference">4. API reference</a></li>
+<li><a href="#41-kernel-toposhypergraph">4.1 Kernel — <code>Topos.Hypergraph</code></a></li>
+<li><a href="#42-reification-semantics-toposhypergraph">4.2 Reification &amp; semantics</a></li>
+<li><a href="#43-views-set-algebra-toposhypergraph">4.3 Views &amp; set algebra</a></li>
+<li><a href="#44-embeddings-learnable-edges-toposhypergraph">4.4 Embeddings &amp; learnable edges</a></li>
+<li><a href="#45-analytics-toposhypergraph">4.5 Analytics</a></li>
+<li><a href="#46-persistence-toposhypergraphpersistence">4.6 Persistence — <code>Topos.Hypergraph.Persistence</code></a></li>
+<li><a href="#47-knowledge-toposhypergraphknowledge">4.7 Knowledge — <code>Topos.Hypergraph.Knowledge</code></a></li>
+<li><a href="#48-internal-types-not-public-api">4.8 Internal types — not public API</a></li>
+<li><a href="#5-usage-patterns">5. Usage patterns</a></li>
+<li><a href="#51-n-ary-facts-as-one-hyperedge">5.1 N-ary facts as one hyperedge</a></li>
+<li><a href="#52-reification-edges-as-vertices">5.2 Reification: edges as vertices</a></li>
+<li><a href="#53-per-membership-cell-data-without-a-kernel-primitive">5.3 Per-membership ("cell") data without a kernel primitive</a></li>
+<li><a href="#54-composable-views">5.4 Composable views</a></li>
+<li><a href="#55-semantic-recall-vector-search">5.5 Semantic recall (vector search)</a></li>
+<li><a href="#56-learnable-edges">5.6 Learnable edges</a></li>
+<li><a href="#57-persistence-save-reload">5.7 Persistence (save / reload)</a></li>
+<li><a href="#58-directed-role-aware-traversal">5.8 Directed (role-aware) traversal</a></li>
+<li><a href="#6-mcp-server-agent-tool-calling">6. MCP server — agent tool-calling</a></li>
+<li><a href="#61-what-it-is">6.1 What it is</a></li>
+<li><a href="#62-wire-it-into-an-agent">6.2 Wire it into an agent</a></li>
+<li><a href="#63-the-18-tools">6.3 The 18 tools</a></li>
+<li><a href="#64-a-worked-example-agent-builds-and-queries-a-hyperedge">6.4 A worked example: agent builds and queries a hyperedge</a></li>
+<li><a href="#65-whats-deliberately-not-exposed">6.5 What's deliberately not exposed</a></li>
+<li><a href="#66-state-lifetime-and-limitations">6.6 State lifetime and limitations</a></li>
+</ul>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>Topos is an <strong>embedded, in-process, typed-property hypergraph library for C#</strong>, purpose-fit for
+AI / agent memory — LLM reasoning, explainability, learnable edges, tiered memory, and
+provenance. <code>[verified:docs=docs/SPECIFICATION.md §2.1]</code></p>
+<p><em>Topos</em> (Greek τόπος, "place / location") is the root of <em>topology</em>. The name invokes the central
+thesis this library serves: <strong>knowledge stored as topological graph structure rather than
+neural-network weights.</strong> "Embedded, in-process" means like SQLite or Kuzu: you reference it as a
+library and hold a <code>HypergraphKernel</code> object in your process, not a server you connect to.
+"Hypergraph" means an edge (a <em>hyperedge</em>) can have <strong>any number of member vertices</strong>, not just
+two — which is the whole reason this library exists instead of just using a property graph.</p>
+<p>Three packages: <code>[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]</code>
+<code>[verified:src=src/Topos.Hypergraph.Persistence/Topos.Hypergraph.Persistence.csproj]</code>
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/Topos.Hypergraph.Knowledge.csproj]</code>
+<code>[verified:src=src/Topos.Hypergraph.Mcp/Topos.Hypergraph.Mcp.csproj]</code></p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>What it's for</th>
+<th>Required?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Topos.Hypergraph</code></td>
+<td>The kernel + algorithms (storage contract, BFS/DFS, views, embeddings, learnable edges, analytics).</td>
+<td><strong>Yes</strong> — everything depends on this.</td>
+</tr>
+<tr>
+<td><code>Topos.Hypergraph.Persistence</code></td>
+<td>Save/load a kernel to/from disk (<code>HypergraphSnapshot</code>).</td>
+<td>Only if you need persistence.</td>
+</tr>
+<tr>
+<td><code>Topos.Hypergraph.Knowledge</code></td>
+<td>Layer-1 role-aware directed traversal (<code>DirectedBfs</code>, <code>RoleFilteredMembers</code>, <code>AddIncidence&lt;TRole&gt;</code>).</td>
+<td>Only if your domain has directed/role-gated semantics.</td>
+</tr>
+<tr>
+<td><code>Topos.Hypergraph.Mcp</code></td>
+<td>A Model Context Protocol server exposing the kernel's API as 18 agent-callable tools (M10). Lets any MCP-aware agent (Claude Code, Cursor, Continue, ZCode) create vertices, build n-ary hyperedges, and query traversals without writing C#.</td>
+<td>Only if you want agents to drive Topos. See <a href="#6-mcp-server-agent-tool-calling">§6</a>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1-installation">1. Installation</h2>
+<p>Topos targets <strong>.NET 10</strong> (<code>net10.0</code>) with <code>Nullable</code> + <code>ImplicitUsings</code> enabled.
+<code>[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]</code></p>
+<h3 id="11-from-nuget-recommended-once-published">1.1 From NuGet (recommended, once published)</h3>
+<p>The three packages are being prepped for first publish under the <strong>MIT</strong> license
+(decided 2026-07-26). Once live, install with:</p>
+<pre><code class="language-bash">dotnet add package Topos.Hypergraph                  # required — kernel + algorithms
+dotnet add package Topos.Hypergraph.Persistence      # optional — save/load
+dotnet add package Topos.Hypergraph.Knowledge        # optional — directed/role-aware traversal
+</code></pre>
+<p>The first release will be the milestone prerelease versions:
+<code>Topos.Hypergraph</code> <code>0.1.0-m8</code>, <code>Topos.Hypergraph.Persistence</code> <code>0.1.0-m8</code>,
+<code>Topos.Hypergraph.Knowledge</code> <code>0.1.0-m9</code>. As prereleases, install opts in with <code>--prerelease</code>:
+<code>[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj — &lt;Version&gt;0.1.0-m8&lt;/Version&gt;]</code></p>
+<pre><code class="language-bash">dotnet add package Topos.Hypergraph --prerelease
+</code></pre>
+<blockquote>
+<p><strong>Status note:</strong> the NuGet publish is the gated item from <code>docs/DECISIONS.md</code>'s "M8 CLOSED"
+entry; the license decision (MIT) was made 2026-07-26 and the publish steps are documented in
+<code>docs/NUGET_PUBLISH_CHECKLIST.md</code>. Until the packages are live, use the source build below.</p>
+</blockquote>
+<h3 id="12-from-source-works-today">1.2 From source (works today)</h3>
+<p>If the NuGet packages aren't yet published — or you want to track <code>main</code> — reference Topos from
+source via a <code>ProjectReference</code>:</p>
+<pre><code class="language-xml">&lt;!-- in your consuming .csproj --&gt;
+&lt;ItemGroup&gt;
+  &lt;ProjectReference Include=&quot;path/to/Topos/src/Topos.Hypergraph/Topos.Hypergraph.csproj&quot; /&gt;
+  &lt;!-- add Topos.Hypergraph.Persistence for save/load --&gt;
+  &lt;!-- add Topos.Hypergraph.Knowledge for directed/role-aware traversal --&gt;
+&lt;/ItemGroup&gt;
+</code></pre>
+<p>Verify your environment against the whole solution: <code>[verified:src=Topos.sln]</code></p>
+<pre><code class="language-bash">dotnet build Topos.sln
+dotnet test Topos.sln
+</code></pre>
+<hr />
+<h2 id="2-concepts-the-mental-model">2. Concepts — the mental model</h2>
+<h3 id="21-what-topos-is">2.1 What Topos is</h3>
+<p>Topos is an <strong>embedded, in-process, typed-property hypergraph kernel for C#</strong>, optimized for
+long-lived adaptive symbolic memory workloads — incremental updates, provenance,
+explainability, retrieval, symbolic+vector coexistence, stable identities, partial activation,
+mutable knowledge that grows rather than being overwritten. <code>[verified:docs=docs/SPECIFICATION.md §2.1]</code></p>
+<p>The full thesis and the workload argument for it live in <code>docs/SPECIFICATION.md §1</code>; this
+section is about <em>how the thing is shaped</em>, not <em>why it should exist</em>.</p>
+<h3 id="22-the-four-primitives">2.2 The four primitives</h3>
+<p>Everything in Topos is built from four primitive types — the load-bearing storage contract; spec
+§3 pressure-tested them across four review rounds and they survived every attempt to add a fifth.
+<code>[verified:docs=docs/SPECIFICATION.md §3]</code> <code>[verified:docs=docs/DECISIONS.md §1]</code></p>
+<h4 id="221-handle-stable-identity">2.2.1 <code>Handle</code> — stable identity</h4>
+<pre><code class="language-csharp">public readonly record struct Handle(uint Index, uint Generation = 0);
+// src/Topos.Hypergraph/Handle.cs
+</code></pre>
+<p>A <code>Handle</code> is the stable identity of a vertex. <code>Index</code> is a <strong>monotonic, never-reused counter</strong> —
+once a vertex exists, its Handle's logical identity never changes and is never recycled, even after
+the vertex goes dormant. <code>[verified:src=src/Topos.Hypergraph/Handle.cs:6-11]</code></p>
+<p><code>Generation</code> is a reserved field for a possible future physical-slot-compaction feature; it is
+always <code>0</code> today and load-bearing for nothing. The field exists so the struct layout is stable if
+that future milestone ever needs it. <code>[verified:src=src/Topos.Hypergraph/Handle.cs:11-15]</code></p>
+<p>Two sentinels worth knowing: <code>Handle.Invalid</code> (the "no vertex" marker, <code>new(uint.MaxValue, uint.MaxValue)</code>)
+and <code>Handle.IsValid</code> (a convenience check). Failure paths on <code>TryGetVertex</code> set the out <code>Vertex</code>'s
+<code>Handle</code> to <code>Invalid</code> rather than C#'s <code>default(Handle)</code> — which would otherwise be indistinguishable
+from a real vertex #0. Always check the <code>bool</code> returned by <code>TryGetVertex</code>; <code>IsValid</code> is
+defense-in-depth, not the primary contract. <code>[verified:src=src/Topos.Hypergraph/Handle.cs:19-36]</code></p>
+<h4 id="222-vertex-the-node-record">2.2.2 <code>Vertex</code> — the node record</h4>
+<pre><code class="language-csharp">public readonly record struct Vertex(Handle Handle, VertexRoles Roles, VertexStatus Status)
+{
+    public bool IsDormant =&gt; Status == VertexStatus.Dormant;
+}
+// src/Topos.Hypergraph/Vertex.cs
+</code></pre>
+<p>A <code>Vertex</code> is the node record. Notice what is <strong>not</strong> here: no data field, no dictionary of
+properties. Typed data attaches separately via <code>PropertyKey&lt;T&gt;</code> pools (primitive 4 below). The only
+things on the record itself are <code>Handle</code>, <code>Roles</code>, and <code>Status</code> — and those three sit inline on the
+record <em>because they are read on every traversal hop</em>; a property-bag indirection in that inner loop
+would be the wrong tier. <code>[verified:src=src/Topos.Hypergraph/Vertex.cs:3-8]</code></p>
+<ul>
+<li><strong><code>VertexRoles</code></strong> (<code>[Flags] enum : byte</code>) — kernel-level roles only. Today there is exactly one:
+  <code>VertexRoles.Edge</code>, marking a vertex as a <em>reified hyperedge</em> (see <a href="#25-hyperedges-as-reified-vertices">§2.5</a>).
+  Domain-specific roles do <strong>not</strong> live here — see <a href="#24-roles-vs-vertexroles-the-single-most-confusing-fork">§2.4</a>.
+  <code>[verified:src=src/Topos.Hypergraph/VertexRoles.cs]</code></li>
+<li><strong><code>VertexStatus</code></strong> (<code>enum : byte</code>) — <code>Active</code> or <code>Dormant</code>. Read per-hop to skip dormant vertices
+  during traversal. <code>[verified:src=Topos.Hypergraph/VertexStatus.cs]</code></li>
+</ul>
+<h4 id="223-incidence-one-membership">2.2.3 <code>Incidence</code> — one membership</h4>
+<pre><code class="language-csharp">public readonly record struct Incidence(Handle Source, Handle Member, byte Role, int Ordinal);
+// src/Topos.Hypergraph/Incidence.cs
+</code></pre>
+<p>An <code>Incidence</code> is <strong>one membership</strong> in a hyperedge: <code>Member</code> participates in <code>Source</code> under <code>Role</code>
+at position <code>Ordinal</code>. This is the primitive that makes the hypergraph n-ary: one hyperedge is just
+the collection of all incidences sharing a <code>Source</code>. <code>[verified:src=src/Topos.Hypergraph/Incidence.cs:3-5]</code></p>
+<ul>
+<li><strong><code>Source</code></strong> is the Handle of a vertex tagged <code>VertexRoles.Edge</code>.</li>
+<li><strong><code>Member</code></strong> is a participant vertex.</li>
+<li><strong><code>Role</code></strong> is a raw <code>byte</code>. The kernel does not interpret it. Domain meaning lives in your layer-1
+  code (see <a href="#24-roles-vs-vertexroles-the-single-most-confusing-fork">§2.4</a>). The recommended way
+  to define role bytes is a <code>byte</code>-backed <code>enum</code> — see <code>docs/ROLE_CONVENTIONS.md</code>.</li>
+<li><strong><code>Ordinal</code></strong> is an <code>int</code> position. Useful when order matters (e.g. "the Anchor is ordinal 0,
+  the Target is the last member").</li>
+</ul>
+<h4 id="224-propertykey-typed-data-identity">2.2.4 <code>PropertyKey&lt;T&gt;</code> — typed data identity</h4>
+<pre><code class="language-csharp">public readonly record struct PropertyKey&lt;T&gt;
+{
+    internal PropertyKey(string name, int id) { Name = name; Id = id; }
+    public string Name { get; }
+    public int Id { get; }
+}
+// src/Topos.Hypergraph/PropertyKey.cs
+</code></pre>
+<p>A <code>PropertyKey&lt;T&gt;</code> is the <em>typed identity</em> of a property, separate from its storage. <code>Name</code> is the
+stable, human-facing identity (e.g. <code>"content"</code>, <code>"embedding"</code>); <code>Id</code> is a per-process integer slot
+resolved once via <code>PropertyRegistry</code> and cached on the key for O(1) lookup. You do <strong>not</strong> construct
+one directly — the constructor is <code>internal</code> (locked M8); the only way to get one is
+<code>kernel.ResolveProperty&lt;T&gt;("name")</code>. <code>[verified:src=src/Topos.Hypergraph/PropertyKey.cs:6-26]</code></p>
+<p>Behind the scenes, each <code>(T)</code> lives in its own columnar pool — an EnTT-style sparse-set, where every
+vertex with a value for that property sits in a dense parallel array. Columnar on purpose: iterating
+"every value of property X" (the shape persistence and analytics want) is a tight loop over one
+array, not a scatter-read across vertices. <code>[verified:docs=docs/SPECIFICATION.md §3]</code></p>
+<h3 id="23-the-two-invariants">2.3 The two invariants</h3>
+<p>The four primitives are governed by two invariants. These are not conventions — they are rules the
+kernel enforces, and your code can rely on them. <code>[verified:docs=docs/SPECIFICATION.md §3]</code></p>
+<h4 id="invariant-1-dormant-is-never-garbage-collected">Invariant 1 — dormant is never garbage-collected</h4>
+<blockquote>
+<p>A vertex, once created, is never removed. Going <code>Dormant</code> tombstones it (it stops participating in
+new traversals) but it stays resolvable forever — including as a <code>Member</code> target of an <code>Incidence</code>.</p>
+</blockquote>
+<p>The operational consequence: <strong>provenance edges always resolve.</strong> If you record "fact F was derived
+from fact G," and later mark G dormant, the edge from F to G still resolves to G's <code>Vertex</code>. You
+never get a dangling Handle. <code>[verified:src=src/Topos.Hypergraph/Incidence.cs:16-28]</code></p>
+<p>This is why <code>Handle.Index</code> is never reused: if it were, a stale Handle from an old provenance edge
+could silently point at a <em>different</em> vertex after recycling. Monotonic allocation + dormant-never-GC
+together make Handle identity a safe long-lived reference. <code>[verified:src=src/Topos.Hypergraph/HandleAllocator.cs:4-7]</code></p>
+<h4 id="invariant-2-vertexroles-and-incidencerole-are-independent-axes">Invariant 2 — <code>VertexRoles</code> and <code>Incidence.Role</code> are independent axes</h4>
+<p>A vertex has a kernel-level <code>VertexRoles</code> (today: <code>None</code> or <code>Edge</code>). A vertex's <em>participation</em> in a
+hyperedge has a layer-level <code>Incidence.Role</code> byte (your domain's meaning). <strong>These do not interact.</strong>
+A vertex tagged <code>VertexRoles.Edge</code> (itself a reified hyperedge) can participate as a member of
+another hyperedge under any role byte — that's how nested reification works (see <a href="#52-reification-edges-as-vertices">§5.2</a>).
+<code>[verified:docs=docs/SPECIFICATION.md §3]</code></p>
+<h3 id="24-roles-vs-vertexroles-the-single-most-confusing-fork">2.4 Roles vs. <code>VertexRoles</code> — the single most confusing fork</h3>
+<p>If you read one section twice, read this one. There are two completely separate "role" concepts and
+they share a name:</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Type</th>
+<th>Where</th>
+<th>Who interprets it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Kernel role</strong></td>
+<td><code>VertexRoles</code> (<code>[Flags] enum : byte</code>)</td>
+<td>inline on <code>Vertex</code></td>
+<td>the kernel; <code>Edge</code> is the only member today</td>
+</tr>
+<tr>
+<td><strong>Domain role</strong></td>
+<td><code>byte</code> (the <code>Role</code> field of <code>Incidence</code>)</td>
+<td>on each <code>Incidence</code></td>
+<td><strong>your layer-1 code, never the kernel</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The kernel-level <code>VertexRoles.Edge</code> marks "this vertex is itself a reified hyperedge." That's it.
+The kernel has no concept of Anchor, Condition, Target, Speaker, Mentioned, Before, After — those
+are all <em>domain</em> roles, carried as the raw <code>byte</code> on each <code>Incidence</code>, and interpreted by the layer
+sitting on top of the kernel.</p>
+<p>This split is the <strong>"the kernel records; it does not judge"</strong> principle from spec §4.1. The kernel
+stores role bytes faithfully and indexes them for O(1) lookup; it does not validate cardinalities
+(e.g. "exactly one Anchor") or attach semantics to specific byte values. Cardinality validation,
+role-naming conventions, and any business rule about what a role means all live in layer-1 — either
+in your consumer code or in the optional <code>Topos.Hypergraph.Knowledge</code> package for the patterns
+multiple consumers have already needed. <code>[verified:src=src/Topos.Hypergraph/Incidence.cs:6-15]</code>
+<code>[verified:docs=docs/SPECIFICATION.md §4.1]</code></p>
+<p>The recommended pattern for defining your domain's role bytes is a <code>byte</code>-backed <code>enum</code> — see
+<code>docs/ROLE_CONVENTIONS.md</code>.</p>
+<h3 id="25-hyperedges-as-reified-vertices">2.5 Hyperedges as reified vertices</h3>
+<p>A hyperedge in Topos is <strong>not a separate primitive</strong>. It is a vertex tagged <code>VertexRoles.Edge</code>,
+connected to its members by incidences where <code>Source</code> is the edge-vertex's Handle. This is the
+"Role:Edge reification" pattern (spec §7 pattern 12). <code>[verified:docs=docs/SPECIFICATION.md §7]</code></p>
+<p>Concretely, to model "one conversation turn mentioning three entities" as a single n-ary
+relationship:</p>
+<pre><code class="language-csharp">var turn     = kernel.CreateVertex();                  // a domain vertex
+var kyoto    = kernel.CreateVertex();                  // a domain vertex
+var nara     = kernel.CreateVertex();
+var osaka    = kernel.CreateVertex();
+
+var mention  = kernel.CreateVertex(VertexRoles.Edge);  // the hyperedge, reified as a vertex
+kernel.AddIncidence(mention, turn,  (byte)Role.Speaker,  ordinal: 0);
+kernel.AddIncidence(mention, kyoto, (byte)Role.Entity,   ordinal: 1);
+kernel.AddIncidence(mention, nara,  (byte)Role.Entity,   ordinal: 2);
+kernel.AddIncidence(mention, osaka, (byte)Role.Entity,   ordinal: 3);
+</code></pre>
+<p>One hyperedge, four members — not three separate binary edges. This is the concrete shape of spec
+§1's thesis: a single utterance mentioning N things together is one atomic event, and the storage
+substrate preserves that atomicity rather than fragmenting it. <code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs:71-79]</code></p>
+<p>Why reify edges as vertices, instead of having a separate edge concept? Because it makes edges
+first-class: an edge can have properties (<code>SetProperty</code> works on any Handle, including an
+edge-vertex's), it can participate in <em>other</em> hyperedges (nested reification — see <a href="#52-reification-edges-as-vertices">§5.2</a>),
+and it can be the target of a provenance edge. None of that needs a special case.</p>
+<h3 id="26-the-layer-architecture">2.6 The layer architecture</h3>
+<p>Topos is a 3-layer substrate: a <strong>Storage model</strong> (the kernel primitives), a <strong>Graph model</strong> (the
+algorithms over those primitives), and a <strong>Knowledge model</strong> (domain semantics). This is locked
+(spec §4), and the namespace boundaries in the shipped packages mirror it.
+<code>[verified:docs=docs/SPECIFICATION.md §4]</code></p>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  Layer 1 — Knowledge model (domain semantics)               │
+│  Your code, optionally + Topos.Hypergraph.Knowledge (M9)    │
+│  Role meanings, cardinality rules, directed/role-gated walk │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 2 — Graph model (algorithms)                         │
+│  Topos.Hypergraph: IHypergraphQuery + BFS/DFS/shortest-     │
+│  path/cycle/components/s-walk/community detection           │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 3 — Storage model (the kernel)                       │
+│  Topos.Hypergraph: Handle / Vertex / Incidence /            │
+│  PropertyKey&lt;T&gt;, the 2 invariants, SWMR concurrency         │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<p>The key discipline: <strong>role-aware / directed traversal stays out of layer 2.</strong> Every default algorithm
+on <code>IHypergraphQuery</code> (<code>GetBfs</code>, <code>GetDfs</code>, <code>GetShortestPath</code>, <code>GetConnectedComponents</code>, <code>HasCycle</code>)
+is <strong>role-blind and co-membership-symmetric</strong> — "the kernel does not judge" (spec §4.1). They treat
+any two vertices co-incident on the same hyperedge as adjacent, with no notion of "Anchor→Target
+direction." <code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:44-56]</code></p>
+<p>That judgment lives in <strong>layer 1</strong> — either in your consumer code (a ~10-line role-filtered walk,
+which three independent consumers have hand-rolled) or, since M9, in the optional
+<code>Topos.Hypergraph.Knowledge</code> package, which offers <code>DirectedBfs</code> / <code>DirectedShortestPath</code> /
+<code>RoleFilteredMembers</code> over the same <code>IHypergraphQuery</code> surface. See <a href="#47-knowledge-toposhypergraphknowledge">§4.7</a>.
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:10-16]</code></p>
+<p>Persistence (<code>Topos.Hypergraph.Persistence</code>) is a separate package that sits across these layers —
+it serializes layer 3's storage to disk and back.</p>
+<h3 id="27-concurrency">2.7 Concurrency</h3>
+<p>The kernel uses a <strong>Single-Writer / Multi-Reader (SWMR)</strong> model. Handle allocation is genuinely
+lock-free (<code>Interlocked.Increment</code>); every other piece of state — the vertex table, the incidence
+indexes, every property pool — is one sparse-set behind its own <code>ReaderWriterLockSlim</code>. Read methods
+are always safe to call concurrently with the single writer; write methods assume a single-writer
+thread (concurrent writes need external synchronization). This is a deliberate, benchmark-driven
+correction: the original copy-on-write design measured 5–6× slower than naive and O(N²) on hub
+vertices; the per-pool-lock design measured <em>faster</em> than naive and eliminated the pathology. Full
+data in <code>docs/M0_BENCHMARK_RESULTS_2026-07-24.md</code>. <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:6-31]</code>
+<code>[verified:docs=docs/DECISIONS.md §3.4]</code></p>
+<h3 id="28-what-topos-is-not">2.8 What Topos is not</h3>
+<p>Scope boundaries, to prevent creeping expectations (lifted from spec §2.2):</p>
+<ul>
+<li><strong>Not an extraction pipeline.</strong> Topos stores and queries; it does not run LLMs to extract triples
+  from text. You can build extraction on top; Topos does not require it.</li>
+<li><strong>Not a server / hosted product.</strong> Embedded only, like SQLite/Kuzu. You hold a <code>HypergraphKernel</code>
+  in-process.</li>
+<li><strong>Not a reasoning / entailment / belief-revision engine.</strong> It stores <code>AssertionMode</code>
+  (asserted/quoted/hypothesized) and <code>Provenance</code>, but it does not reason over them. No contradiction
+  resolution, no truth maintenance, no logical entailment. Storing an <code>AssertionMode.Hypothesized</code>
+  flag is storage; revising beliefs from it is <em>your</em> job.</li>
+<li><strong>Not multi-language by FFI.</strong> Pure C#.</li>
+</ul>
+<p><code>[verified:docs=docs/SPECIFICATION.md §2.2]</code></p>
+<hr />
+<h2 id="3-getting-started">3. Getting started</h2>
+<blockquote>
+<p>The examples here are adapted from the real, working code in
+<code>samples/Topos.Samples.ChatMemory/</code> (the M5 falsifiability sample) and its tests, stripped of the
+meta-framing. <code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs]</code></p>
+</blockquote>
+<h3 id="31-create-a-kernel-and-some-vertices">3.1 Create a kernel and some vertices</h3>
+<pre><code class="language-csharp">using Topos.Hypergraph;
+
+var kernel = new HypergraphKernel();
+
+// Domain vertices — things in your domain. Allocate one, get its Handle back.
+Handle alice   = kernel.CreateVertex();
+Handle kyoto   = kernel.CreateVertex();
+Handle nara    = kernel.CreateVertex();
+Handle osaka   = kernel.CreateVertex();
+</code></pre>
+<p><code>CreateVertex</code> allocates a fresh, never-reused <code>Handle</code> with <code>VertexStatus.Active</code>.
+<code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:51-62]</code> A <code>Handle</code> is just an identity — it
+carries no data. Data attaches via typed properties (next step).</p>
+<h3 id="32-define-typed-properties">3.2 Define typed properties</h3>
+<p>Before you can attach data, you resolve a <code>PropertyKey&lt;T&gt;</code> for each typed attribute. <strong>Resolve once,
+cache the result</strong> (e.g. in a field), and reuse it for every get/set — repeated resolution is a
+dictionary lookup, not free, and the type <code>T</code> must be consistent for a given name.
+<code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:144-152]</code></p>
+<pre><code class="language-csharp">PropertyKey&lt;string&gt;  name      = kernel.ResolveProperty&lt;string&gt;(&quot;name&quot;);
+PropertyKey&lt;float[]&gt; embedding = kernel.ResolveProperty&lt;float[]&gt;(&quot;embedding&quot;);
+
+kernel.SetProperty(name, alice, &quot;Alice&quot;);
+kernel.SetProperty(name, kyoto, &quot;Kyoto&quot;);
+
+if (kernel.TryGetProperty(name, alice, out var aliceName))
+    Console.WriteLine(aliceName);  // &quot;Alice&quot;
+</code></pre>
+<p>A few things worth knowing up front: <code>[verified:src=src/Topos.Hypergraph/PropertyKey.cs:6-26]</code></p>
+<ul>
+<li><code>PropertyKey&lt;T&gt;</code>'s constructor is <code>internal</code> — <code>ResolveProperty&lt;T&gt;</code> is the only way to get one
+  (locked M8).</li>
+<li>No existence check on the <code>Handle</code> in <code>SetProperty</code> — properties on a not-yet-created or dormant
+  Handle are legal (Invariant 1: provenance edges always resolve).</li>
+<li>Resolving the <em>same name</em> with two different <code>T</code>s is a caller error that throws
+  <code>InvalidCastException</code> on first pool access. Pick one <code>T</code> per name and stick to it.</li>
+</ul>
+<h3 id="33-build-an-n-ary-hyperedge">3.3 Build an n-ary hyperedge</h3>
+<p>This is the heart of Topos. One utterance mentioning three entities is <strong>one atomic relationship</strong>,
+not three separate edges. Model it as one hyperedge — a vertex tagged <code>VertexRoles.Edge</code>, connected
+to its members by incidences: <code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs:71-79]</code></p>
+<pre><code class="language-csharp">// Define your domain's roles as a byte-backed enum (docs/ROLE_CONVENTIONS.md).
+// [verified:docs=docs/ROLE_CONVENTIONS.md — &quot;The decision&quot;]
+public enum TripRole : byte
+{
+    Speaker  = 0,  // the turn that said it
+    Mention  = 1,  // an entity that was mentioned
+}
+
+// The hyperedge itself, reified as a vertex.
+Handle mention = kernel.CreateVertex(VertexRoles.Edge);
+
+// Wire up the members. Source is the edge; Member is each participant.
+kernel.AddIncidence(mention, alice, (byte)TripRole.Speaker, ordinal: 0);
+kernel.AddIncidence(mention, kyoto, (byte)TripRole.Mention, ordinal: 1);
+kernel.AddIncidence(mention, nara,  (byte)TripRole.Mention, ordinal: 2);
+kernel.AddIncidence(mention, osaka, (byte)TripRole.Mention, ordinal: 3);
+</code></pre>
+<p><code>AddIncidence</code> takes the role as a raw <code>byte</code> — the kernel does not interpret it. Defining role
+bytes as a <code>byte</code>-backed <code>enum</code> and casting explicitly is the documented convention.
+<code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:116-126]</code></p>
+<h3 id="34-query-it-back">3.4 Query it back</h3>
+<h4 id="one-hop-who-was-mentioned-in-this-turn">One-hop: who was mentioned in this turn?</h4>
+<p>Hand-rolled (works against the kernel alone): <code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs:81-85]</code></p>
+<pre><code class="language-csharp">IReadOnlyList&lt;Handle&gt; mentioned = kernel
+    .GetVertexHyperedges(alice)              // hyperedges alice is in
+    .SelectMany(edge =&gt; kernel.IncidencesFrom(edge))
+    .Where(i =&gt; i.Role == (byte)TripRole.Mention)
+    .Select(i =&gt; i.Member)
+    .ToList();
+// [kyoto, nara, osaka]
+</code></pre>
+<p>Equivalent, using the M9 <code>Knowledge</code> package (a one-liner once you reference it):
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:89-99]</code></p>
+<pre><code class="language-csharp">using Topos.Hypergraph.Knowledge;
+
+IReadOnlyList&lt;Handle&gt; mentioned = kernel.RoleFilteredMembers(alice, (byte)TripRole.Mention);
+</code></pre>
+<h4 id="multi-hop-topology-is-alice-connected-to-osaka">Multi-hop topology: is <code>alice</code> connected to <code>osaka</code>?</h4>
+<p>Every kernel algorithm is a default method on <code>IHypergraphQuery</code>, built purely from the five
+required primitives — <code>HypergraphKernel</code> <em>is</em> an <code>IHypergraphQuery</code>:
+<code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:57-159]</code></p>
+<pre><code class="language-csharp">IHypergraphQuery query = kernel;
+
+bool reachable = query.IsReachable(alice, osaka);             // true — they share the mention hyperedge
+IReadOnlyList&lt;Handle&gt; path = query.GetShortestPath(alice, osaka);
+foreach (var v in path)
+    Console.WriteLine(v);   // #0, #3  (alice → osaka, one hop across the hyperedge)
+</code></pre>
+<p>A subtlety: at this layer, "adjacent" means <em>co-incident on the same hyperedge</em>. The <code>Speaker</code> /
+<code>Mention</code> distinction is invisible to <code>IsReachable</code> — that's role-blind traversal by design
+("the kernel does not judge"). The path is one hop because alice and osaka are both members of the
+same hyperedge. <code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:127-225]</code></p>
+<h4 id="directed-follow-only-speaker-mention-legs">Directed: follow only <code>Speaker → Mention</code> legs</h4>
+<p>If your domain has direction, use the M9 <code>Knowledge</code> package — the kernel's own traversal is
+deliberately role-blind: <code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:19-51]</code></p>
+<pre><code class="language-csharp">// From alice (Speaker), reach everyone she mentioned — multi-hop, across hyperedges.
+IReadOnlyList&lt;Handle&gt; directed = query.DirectedBfs(alice, (byte)TripRole.Speaker, (byte)TripRole.Mention);
+</code></pre>
+<p><code>DirectedBfs</code> follows only hyperedges where the current frontier vertex holds the <code>fromRole</code>, landing
+on that edge's <code>toRole</code> members. It is an extension method on <code>IHypergraphQuery</code>, so it works over a
+kernel, a filtered view, a union — any source.</p>
+<h3 id="35-save-and-reload">3.5 Save and reload</h3>
+<p>To round-trip the kernel through disk, reference <code>Topos.Hypergraph.Persistence</code> and use
+<code>HypergraphSnapshot</code>. You save topology (vertices, incidences, allocator state) <strong>plus an explicit,
+caller-specified set of typed property columns</strong> — the snapshot machinery does not introspect
+arbitrary property types automatically. <code>[verified:src=src/Topos.Hypergraph.Persistence/HypergraphSnapshot.cs:45-88]</code></p>
+<pre><code class="language-csharp">using Topos.Hypergraph.Persistence;
+using System.IO;
+
+var columns = new IPersistedPropertyColumn[]
+{
+    PersistedProperty.String(name),         // the PropertyKey&lt;string&gt; from step 3.2
+    // PersistedProperty.Single(embedding)  // float, not double — uncomment to persist embeddings
+};
+
+using (var stream = File.Create(&quot;trip.snap&quot;))
+    HypergraphSnapshot.Save(kernel, stream, columns);
+
+HypergraphKernel reloaded;
+using (var stream = File.OpenRead(&quot;trip.snap&quot;))
+    reloaded = HypergraphSnapshot.Load(stream, columns);
+
+// Handle identity is intact across reload — Invariant 1 preserved.
+Console.WriteLine(reloaded.CountVertices() == kernel.CountVertices()); // true
+</code></pre>
+<p>A few non-obvious things worth knowing: <code>[verified:src=src/Topos.Hypergraph.Persistence/HypergraphSnapshot.cs:25-44]</code></p>
+<ul>
+<li><code>Save</code> writes the kernel's <code>NextHandleIndex</code>; <code>Load</code> constructs the new kernel with that as its
+  allocator's starting point, so the first vertex created post-reload gets a genuinely fresh Index —
+  never a collision with a restored one.</li>
+<li>Built-in codecs cover common types (<code>int</code>, <code>long</code>, <code>double</code>, <code>float</code>, <code>bool</code>, <code>string</code>, <code>byte</code>,
+  <code>DateOnly</code>). Anything else needs <code>PersistedProperty.Custom&lt;T&gt;</code> with a caller-supplied
+  encode/decode pair. <code>[verified:src=src/Topos.Hypergraph.Persistence/PersistedProperty.cs:53-80]</code></li>
+<li>This is <strong>not</strong> a transparent hot/cold hybrid kernel (no automatic spill under memory pressure),
+  and <strong>not</strong> an LSM tree (no WAL/compaction/crash safety). It's an explicit save/load step.</li>
+</ul>
+<hr />
+<h2 id="4-api-reference">4. API reference</h2>
+<blockquote>
+<p>Every public type, grouped by layer/package. Each entry has a one-sentence purpose, the
+load-bearing public members with signatures, a when-to-use note, and a source cross-ref. Every
+claim is tagged <code>[verified:src=...]</code>. Internal types (not public API) are in <a href="#48-internal-types-not-public-api">§4.8</a>.
+All types target <strong>.NET 10</strong>. <code>[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]</code></p>
+</blockquote>
+<h3 id="41-kernel-toposhypergraph">4.1 Kernel — <code>Topos.Hypergraph</code></h3>
+<p>The four-primitive storage contract, the kernel class, and the query interface. Spec §3.
+<code>[verified:docs=docs/SPECIFICATION.md §3]</code></p>
+<h4 id="handle"><code>Handle</code></h4>
+<p>Stable identity for a vertex. <code>[verified:src=src/Topos.Hypergraph/Handle.cs:17]</code></p>
+<pre><code class="language-csharp">public readonly record struct Handle(uint Index, uint Generation = 0)
+{
+    public static readonly Handle Invalid = new(uint.MaxValue, uint.MaxValue);
+    public bool IsValid =&gt; this != Invalid;
+    public override string ToString();
+}
+</code></pre>
+<ul>
+<li><code>Index</code> — monotonic, never-reused counter. <code>[verified:src=src/Topos.Hypergraph/Handle.cs:6-11]</code></li>
+<li><code>Generation</code> — reserved for a possible future slot-compaction feature. Always <code>0</code> today.
+  <code>[verified:src=src/Topos.Hypergraph/Handle.cs:11-15]</code></li>
+<li><code>Invalid</code> — the "no vertex" sentinel. Failure paths on <code>TryGetVertex</code> set the out <code>Vertex</code>'s Handle
+  to this value (not C#'s <code>default(Handle)</code>, which would collide with real vertex #0). Always check
+  the <code>bool</code>; <code>IsValid</code> is defense-in-depth. <code>[verified:src=src/Topos.Hypergraph/Handle.cs:19-36]</code></li>
+</ul>
+<h4 id="vertex"><code>Vertex</code></h4>
+<p>The node record. <code>[verified:src=src/Topos.Hypergraph/Vertex.cs:9]</code></p>
+<pre><code class="language-csharp">public readonly record struct Vertex(Handle Handle, VertexRoles Roles, VertexStatus Status)
+{
+    public bool IsDormant =&gt; Status == VertexStatus.Dormant;
+}
+</code></pre>
+<p><code>Roles</code> and <code>Status</code> are inline struct fields (read per-hop by traversal), not PropertyBag entries —
+the record is intentionally small. <code>[verified:src=src/Topos.Hypergraph/Vertex.cs:3-8]</code></p>
+<h4 id="incidence"><code>Incidence</code></h4>
+<p>One membership in a hyperedge. <code>[verified:src=src/Topos.Hypergraph/Incidence.cs:30]</code></p>
+<pre><code class="language-csharp">public readonly record struct Incidence(Handle Source, Handle Member, byte Role, int Ordinal);
+</code></pre>
+<p><code>Source</code> is the edge-vertex's Handle; <code>Member</code> is a participant. <code>Role</code> is a raw byte — the kernel
+does not interpret it. <code>Ordinal</code> is the position. <strong>No cell-level properties exist on <code>Incidence</code>
+itself</strong> — see <a href="#53-per-membership-cell-data-without-a-kernel-primitive">§5.3</a> for the workarounds if
+you need per-membership data. <code>[verified:src=src/Topos.Hypergraph/Incidence.cs:6-28]</code></p>
+<h4 id="propertykey"><code>PropertyKey&lt;T&gt;</code></h4>
+<p>Typed identity for a property. <code>[verified:src=src/Topos.Hypergraph/PropertyKey.cs:16-26]</code></p>
+<pre><code class="language-csharp">public readonly record struct PropertyKey&lt;T&gt;
+{
+    internal PropertyKey(string name, int id);   // internal — locked M8
+    public string Name { get; }
+    public int Id { get; }
+}
+</code></pre>
+<p>Obtain one only via <code>HypergraphKernel.ResolveProperty&lt;T&gt;(string)</code> (or <code>PropertyRegistry.Resolve&lt;T&gt;</code>)
+— the constructor is <code>internal</code> to prevent constructing two keys with the same <code>Id</code> but different
+<code>T</code>s (a footgun that throws <code>InvalidCastException</code> on first pool access).
+<code>[verified:src=src/Topos.Hypergraph/PropertyKey.cs:6-15]</code></p>
+<h4 id="propertyregistry"><code>PropertyRegistry</code></h4>
+<p>Per-process, thread-safe string→int property registry. <code>[verified:src=src/Topos.Hypergraph/PropertyRegistry.cs:18-28]</code></p>
+<pre><code class="language-csharp">public sealed class PropertyRegistry
+{
+    public PropertyKey&lt;T&gt; Resolve&lt;T&gt;(string name);
+}
+</code></pre>
+<p>An Id is assigned once per name and never reused. The name→Id mapping is <strong>untyped</strong> — resolving the
+same name with two different <code>T</code>s is a caller error that throws <code>InvalidCastException</code> on first pool
+access. In practice, most code calls <code>kernel.ResolveProperty&lt;T&gt;</code> rather than instantiating a
+<code>PropertyRegistry</code> directly. <code>[verified:src=src/Topos.Hypergraph/PropertyRegistry.cs:11-16]</code></p>
+<h4 id="vertexroles"><code>VertexRoles</code></h4>
+<p>Kernel-level roles on a <code>Vertex</code> (read per-hop by traversal). <code>[verified:src=src/Topos.Hypergraph/VertexRoles.cs:13-17]</code></p>
+<pre><code class="language-csharp">[Flags]
+public enum VertexRoles : byte
+{
+    None = 0,
+    Edge = 1 &lt;&lt; 0,   // the one kernel role: &quot;this vertex is a reified hyperedge&quot;
+}
+</code></pre>
+<p>Kernel-level only. Domain roles do <strong>not</strong> go here — they live as <code>Incidence.Role</code> bytes.
+<code>[verified:src=src/Topos.Hypergraph/VertexRoles.cs:3-11]</code></p>
+<h4 id="vertexstatus"><code>VertexStatus</code></h4>
+<p>Active/dormant tombstone flag. <code>[verified:src=src/Topos.Hypergraph/VertexStatus.cs:8-12]</code></p>
+<pre><code class="language-csharp">public enum VertexStatus : byte
+{
+    Active = 0,
+    Dormant = 1,
+}
+</code></pre>
+<p><code>Dormant</code> is a tombstone, not deletion — Invariant 1. <code>[verified:src=src/Topos.Hypergraph/VertexStatus.cs:3-7]</code></p>
+<h4 id="handleallocator"><code>HandleAllocator</code></h4>
+<p>Lock-free monotonic Handle allocator. <code>[verified:src=src/Topos.Hypergraph/HandleAllocator.cs:8-24]</code></p>
+<pre><code class="language-csharp">public sealed class HandleAllocator
+{
+    public HandleAllocator(uint startingIndex = 0);
+    public Handle Next();
+    public uint NextIndex { get; }
+}
+</code></pre>
+<p>Safe for concurrent callers (<code>Interlocked.Increment</code>). Never reuses an Index — Invariant 1 depends
+on this. <code>startingIndex</code> exists for snapshot reload (M4). Most code never touches this class
+directly — <code>HypergraphKernel</code> owns its own instance. <code>[verified:src=src/Topos.Hypergraph/HandleAllocator.cs:4-22]</code></p>
+<h4 id="hypergraphkernel"><code>HypergraphKernel</code></h4>
+<p>The kernel: storage + writes. Implements <code>IHypergraphQuery</code>. <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:32]</code></p>
+<pre><code class="language-csharp">public sealed class HypergraphKernel : IHypergraphQuery
+{
+    public HypergraphKernel();
+    public HypergraphKernel(uint startingHandleIndex);   // M4: resume after reload
+    public uint NextHandleIndex { get; }                 // M4: snapshot-side counterpart
+
+    // ── Vertices ──
+    public Handle CreateVertex(VertexRoles roles = VertexRoles.None);
+    public bool TryGetVertex(Handle handle, out Vertex vertex);
+    public void RestoreVertex(Handle handle, VertexRoles roles, VertexStatus status); // M4, snapshot only
+    public void SetDormant(Handle handle);
+    public void Reactivate(Handle handle);
+
+    // ── Incidences ──
+    public Incidence AddIncidence(Handle source, Handle member, byte role, int ordinal);
+    public ImmutableArray&lt;Incidence&gt; IncidencesFrom(Handle source);
+    public ImmutableArray&lt;Incidence&gt; IncidencesOf(Handle member);
+    public IEnumerable&lt;Incidence&gt; AllIncidences();   // added for M4 snapshot consumer
+
+    // ── Properties ──
+    public PropertyKey&lt;T&gt; ResolveProperty&lt;T&gt;(string name);
+    public void SetProperty&lt;T&gt;(PropertyKey&lt;T&gt; key, Handle handle, T value);
+    public bool TryGetProperty&lt;T&gt;(PropertyKey&lt;T&gt; key, Handle handle, out T value);
+    public bool RemoveProperty&lt;T&gt;(PropertyKey&lt;T&gt; key, Handle handle);
+    public ImmutableArray&lt;(Handle Handle, T Value)&gt; EnumerateProperty&lt;T&gt;(PropertyKey&lt;T&gt; key);
+
+    // ── IHypergraphQuery primitives (see below) ──
+    public int CountVertices();
+    public IReadOnlyList&lt;Handle&gt; VertexHandles();
+    public IReadOnlyList&lt;Handle&gt; GetVertexHyperedges(Handle vertex);
+    public IReadOnlyList&lt;Incidence&gt; GetHyperedgeVertices(Handle hyperedge);
+}
+</code></pre>
+<p>Key operational facts: <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:43-172]</code></p>
+<ul>
+<li><strong>Concurrency:</strong> Single-Writer/Multi-Reader. Handle allocation is lock-free; everything else is a
+  sparse-set behind its own <code>ReaderWriterLockSlim</code>. <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:6-31]</code></li>
+<li><strong>No existence checks</strong> on <code>AddIncidence</code> / <code>SetProperty</code> — provenance edges always resolve, even
+  to dormant targets (Invariant 1). <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:116-126]</code> <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:154-156]</code></li>
+<li><code>RestoreVertex</code> is the <strong>only sanctioned Invariant-1 bypass</strong> — inserts a vertex at an
+  already-allocated Handle, bypassing the allocator. Snapshot reload only; its only caller is
+  <code>HypergraphSnapshot.Load</code>. <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:71-81]</code></li>
+</ul>
+<h4 id="ihypergraphquery"><code>IHypergraphQuery</code></h4>
+<p>The query surface: 5 required primitives + ~40 default-implemented algorithms. Spec §6 M1.
+<code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:57]</code></p>
+<pre><code class="language-csharp">public interface IHypergraphQuery
+{
+    // ── Required primitives ──
+    int CountVertices();
+    IReadOnlyList&lt;Handle&gt; VertexHandles();
+    bool TryGetVertex(Handle handle, out Vertex vertex);
+    IReadOnlyList&lt;Handle&gt; GetVertexHyperedges(Handle vertex);
+    IReadOnlyList&lt;Incidence&gt; GetHyperedgeVertices(Handle hyperedge);
+
+    // ── Default-implemented derivations ──
+    bool IsEmpty();
+    bool ContainsVertex(Handle handle);
+    Vertex GetVertex(Handle handle);                       // throwing counterpart of TryGetVertex
+    IReadOnlyList&lt;Handle&gt; HyperedgeHandles();               // O(V) scan for VertexRoles.Edge
+    int CountHyperedges();
+
+    // ── Default-implemented algorithms ──
+    IEnumerable&lt;Handle&gt; GetBfs(Handle start);
+    IEnumerable&lt;Handle&gt; GetDfs(Handle start);
+    bool IsReachable(Handle from, Handle to);
+    int? GetShortestPathLength(Handle from, Handle to);     // null if unreachable
+    IReadOnlyList&lt;Handle&gt; GetShortestPath(Handle from, Handle to);
+    bool HasCycle();
+    IReadOnlyDictionary&lt;Handle, IReadOnlyList&lt;Handle&gt;&gt; GetTransitiveClosure();
+    IReadOnlyList&lt;IReadOnlyList&lt;Handle&gt;&gt; GetConnectedComponents();
+}
+</code></pre>
+<p><strong>Every algorithm here is role-blind and co-membership-symmetric</strong> ("the kernel does not judge"). A
+hop is one vertex→vertex step across one hyperedge; role direction is invisible. For role-aware /
+directed traversal, use <code>Topos.Hypergraph.Knowledge</code> (<a href="#47-knowledge-toposhypergraphknowledge">§4.7</a>).
+<code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:44-56]</code></p>
+<p>Two warnings worth reading in the source rather than paraphrased:</p>
+<ul>
+<li><strong><code>HasCycle()</code> returns <code>true</code> almost always on any real n-ary hypergraph.</strong> Three co-members are
+  pairwise "adjacent," so any hyperedge with 3+ members is trivially cyclic at this layer.
+  <code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:277-306]</code></li>
+<li><strong><code>GetConnectedComponents()</code> is deliberately not called "SCC."</strong> At the topology layer the
+  adjacency is symmetric, so strongly/weakly connected coincide. GDS-verified against <code>gds.wcc</code>.
+  <code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:358-410]</code></li>
+</ul>
+<p>GDS-parity coverage: BFS, DFS, and <code>GetConnectedComponents</code> are verified against <code>gds.bfs</code>/<code>gds.dfs</code>/
+<code>gds.wcc</code> in <code>tests/Topos.Tests.GdsOracle</code>. <code>GetShortestPathLength</code> is verified with a documented
+bipartite-vs-logical hop correction. Cycle detection and transitive closure are unit-tested only.
+<code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:36-42]</code></p>
+<h3 id="42-reification-semantics-toposhypergraph">4.2 Reification &amp; semantics — <code>Topos.Hypergraph</code></h3>
+<p>Two public types that model epistemic status and provenance. <strong>Neither is a reserved <code>Vertex</code> field</strong> —
+both are stored via <code>PropertyKey&lt;T&gt;</code> pools like any typed attribute, which is itself a small
+validation that M0's property design was already general enough for M2/M5.</p>
+<blockquote>
+<p>There is <strong>no dedicated reification method</strong> on the kernel. Reification is a usage pattern:
+<code>CreateVertex(VertexRoles.Edge)</code> + <code>AddIncidence</code>. Nested reification (an edge that participates in
+another edge) is just an <code>Incidence</code> whose <code>Member</code> is an edge-vertex. <code>[verified:docs=docs/SPECIFICATION.md §7 pattern 12]</code></p>
+</blockquote>
+<h4 id="assertionmode"><code>AssertionMode</code></h4>
+<p>Epistemic status of a reified relationship. <code>[verified:src=src/Topos.Hypergraph/AssertionMode.cs:20-30]</code></p>
+<pre><code class="language-csharp">public enum AssertionMode : byte
+{
+    Asserted = 0,      // committed as true
+    Quoted = 1,        // referenced without commitment (RDF 1.2 unasserted triple term)
+    Hypothesized = 2,  // candidate belief, not yet confirmed/rejected
+}
+</code></pre>
+<p>Not a reserved field — nothing in core traversal reads it per-hop. Resolve a property key for it:
+<code>kernel.ResolveProperty&lt;AssertionMode&gt;("mode")</code>. A vertex with no mode property set means "no mode
+recorded." <code>[verified:src=src/Topos.Hypergraph/AssertionMode.cs:3-19]</code></p>
+<h4 id="provenance"><code>Provenance</code></h4>
+<p>Where a fact came from. <code>[verified:src=src/Topos.Hypergraph/Provenance.cs:17]</code></p>
+<pre><code class="language-csharp">public readonly record struct Provenance(string Source, DateTimeOffset RecordedAt);
+</code></pre>
+<p>"First-class" here means a named designed type with clear semantics, not a new storage mechanism.
+<strong>For structural provenance</strong> — which other in-graph facts a fact was derived from — nested
+reification is the actual mechanism: link a derived edge to its source edges via <code>Incidence</code>. This
+record is for the <strong>leaf</strong> case: provenance that terminates outside the graph (a document, a user,
+an external system). <code>[verified:src=src/Topos.Hypergraph/Provenance.cs:4-16]</code></p>
+<h3 id="43-views-set-algebra-toposhypergraph">4.3 Views &amp; set algebra — <code>Topos.Hypergraph</code></h3>
+<p>Composable read-only views over <code>IHypergraphQuery</code>. Spec §6 M3.</p>
+<h4 id="hypergraphviews"><code>HypergraphViews</code></h4>
+<p>Static factory for composable views. All methods return <code>IHypergraphQuery</code> and are O(1) to construct.
+<code>[verified:src=src/Topos.Hypergraph/HypergraphViews.cs:37-57]</code></p>
+<pre><code class="language-csharp">public static class HypergraphViews
+{
+    public static IHypergraphQuery Subgraph(IHypergraphQuery source, Func&lt;Handle, bool&gt; predicate);
+    public static IHypergraphQuery Mask(IHypergraphQuery source, Func&lt;Handle, bool&gt; predicate);     // same as Subgraph
+    public static IHypergraphQuery Union(IHypergraphQuery a, IHypergraphQuery b);
+    public static IHypergraphQuery Intersect(IHypergraphQuery a, IHypergraphQuery b);
+    public static IHypergraphQuery Difference(IHypergraphQuery a, IHypergraphQuery b);
+}
+</code></pre>
+<p>Notes: <code>[verified:src=src/Topos.Hypergraph/HypergraphViews.cs:3-36]</code></p>
+<ul>
+<li><strong>No <code>Unmodifiable</code> view exists, deliberately.</strong> <code>IHypergraphQuery</code> has no write members, so typing
+  a kernel as <code>IHypergraphQuery</code> already gives an unmodifiable view at compile time, for free.</li>
+<li><strong>Set algebra doubles as in-kernel version-diff.</strong> Because <code>Handle.Index</code> is monotonic and never
+  reused, <code>Subgraph(kernel, h =&gt; h.Index &lt; threshold)</code> is a genuine "state as of an earlier point in
+  this kernel's history." <code>Difference(later, earlier)</code> gives "what's been added since." See
+  <a href="#54-composable-views">§5.4</a>.</li>
+</ul>
+<h4 id="filteredview"><code>FilteredView</code></h4>
+<p>Read-only view restricting a source to vertices passing a predicate.
+<code>[verified:src=src/Topos.Hypergraph/FilteredView.cs:24-42]</code></p>
+<pre><code class="language-csharp">public sealed class FilteredView(IHypergraphQuery source, Func&lt;Handle, bool&gt; predicate) : IHypergraphQuery;
+</code></pre>
+<p><code>Subgraph</code> and <code>Mask</code> both construct one of these. A hyperedge is included only when the predicate
+accepts the edge-vertex itself; a member is reported only when the predicate also accepts that member
+(JGraphT <code>AsSubgraph</code> convention generalized to N-ary — out-of-view members are silently dropped,
+not errors). Every <code>IHypergraphQuery</code> algorithm works over a <code>FilteredView</code> unchanged.
+<code>[verified:src=src/Topos.Hypergraph/FilteredView.cs:11-23]</code></p>
+<h4 id="unionview"><code>UnionView</code></h4>
+<p>Read-only view presenting the union of two sources. <code>[verified:src=src/Topos.Hypergraph/UnionView.cs:24-42]</code></p>
+<pre><code class="language-csharp">public sealed class UnionView(IHypergraphQuery a, IHypergraphQuery b) : IHypergraphQuery;
+</code></pre>
+<p><strong>Conflict rule: <code>a</code> wins</strong> if the same Handle resolves differently in both. <strong>Only meaningful when
+both sources share a Handle-identity space</strong> — two views from the same kernel qualify; two
+independently-constructed kernels do not. <code>[verified:src=src/Topos.Hypergraph/UnionView.cs:8-23]</code></p>
+<h3 id="44-embeddings-learnable-edges-toposhypergraph">4.4 Embeddings &amp; learnable edges — <code>Topos.Hypergraph</code></h3>
+<p>Derived structures over <code>PropertyKey&lt;T&gt;</code> data. <strong>None of these adds kernel storage</strong> — they read
+from the kernel's existing typed properties via <code>EnumerateProperty</code>, so each is swappable without
+touching <code>HypergraphKernel</code>. Spec §6 M5.</p>
+<h4 id="vectorindex"><code>VectorIndex</code></h4>
+<p>k-nearest-neighbor search over <code>PropertyKey&lt;float[]&gt;</code> embeddings.
+<code>[verified:src=src/Topos.Hypergraph/VectorIndex.cs:20-56]</code></p>
+<pre><code class="language-csharp">public sealed class VectorIndex(HypergraphKernel kernel, PropertyKey&lt;float[]&gt; embeddingKey)
+{
+    public IReadOnlyList&lt;(Handle Handle, float Distance)&gt; NearestNeighbors(ReadOnlySpan&lt;float&gt; query, int k);
+}
+</code></pre>
+<p><strong>Brute-force, not approximate</strong> — the name says "VectorIndex," not "ApproximateNearestNeighborIndex,"
+to avoid overclaiming. Squared Euclidean distance; throws on <code>k &lt;= 0</code> or embedding-dimension
+mismatch (no padding/truncation). <code>[verified:src=src/Topos.Hypergraph/VectorIndex.cs:3-19]</code></p>
+<h4 id="learnableedge"><code>LearnableEdge</code></h4>
+<p>Sigmoid edge weight, reinforced by gradient ascent on reward.
+<code>[verified:src=src/Topos.Hypergraph/LearnableEdge.cs:15-56]</code></p>
+<pre><code class="language-csharp">public readonly record struct LearnableEdge(float[] Theta)
+{
+    public float Evaluate(ReadOnlySpan&lt;float&gt; features);                 // theta[0] is bias
+    public LearnableEdge Reinforce(ReadOnlySpan&lt;float&gt; features, float reward, float learningRate);
+    public static LearnableEdge CreateUninitialized(int featureCount);   // all-zero → Evaluate returns 0.5
+}
+</code></pre>
+<p>Generalizes RLB's <code>ThetaParameters</code>/<code>ReinforceTheta</code> without RLB's fixed feature layout. Immutable
+value type: <code>Reinforce</code> returns a <em>new</em> instance; the caller <code>SetProperty</code>s it back over the old one.
+<code>[verified:src=src/Topos.Hypergraph/LearnableEdge.cs:3-14]</code></p>
+<h4 id="edgestatistics"><code>EdgeStatistics</code></h4>
+<p>Per-membership statistics carried on an edge. <code>[verified:src=src/Topos.Hypergraph/EdgeStatistics.cs:14-29]</code></p>
+<pre><code class="language-csharp">public readonly record struct EdgeStatistics(int TransitionCount, double SuccessRate, double Confidence)
+{
+    public static readonly EdgeStatistics Initial = new(0, 1.0, 0.5);
+    public EdgeStatistics Observe(bool succeeded, double smoothing = 0.1);  // EMA update
+}
+</code></pre>
+<p>Generalizes RLB's <code>TransitionCount</code>/<code>SuccessRate</code>/<code>Confidence</code>. The EMA <code>Observe</code> rule is a sensible
+default, not a mandated one. <code>[verified:src=src/Topos.Hypergraph/EdgeStatistics.cs:3-13]</code></p>
+<h3 id="45-analytics-toposhypergraph">4.5 Analytics — <code>Topos.Hypergraph</code></h3>
+<p>M6 algorithms over topology-only bipartite adjacency. Spec §6 M6.</p>
+<h4 id="swalk"><code>SWalk</code></h4>
+<p>s-walk / s-distance over hyperedges. The one genuinely hypergraph-specific algorithm here.
+<code>[verified:src=src/Topos.Hypergraph/SWalk.cs:15-105]</code></p>
+<pre><code class="language-csharp">public static class SWalk
+{
+    public static IEnumerable&lt;Handle&gt; Reachable(IHypergraphQuery graph, Handle start, int s);
+    public static int? Distance(IHypergraphQuery graph, Handle from, Handle to, int s);
+}
+</code></pre>
+<p>Two hyperedges are <strong>s-adjacent</strong> when they share ≥ <code>s</code> common members. <strong>Deliberately not
+GDS-verified</strong> — GDS operates on the binary projection and has no notion of "share ≥ s members";
+Topos's answer is the novel claim here. Both methods throw <code>ArgumentOutOfRangeException</code> eagerly (not
+on enumeration) if <code>s &lt; 1</code>. <code>[verified:src=src/Topos.Hypergraph/SWalk.cs:3-14]</code> <code>[verified:src=src/Topos.Hypergraph/SWalk.cs:17-31]</code></p>
+<h4 id="labelpropagation"><code>LabelPropagation</code></h4>
+<p>Community detection by label propagation. GDS-verified (<code>gds.labelPropagation</code>).
+<code>[verified:src=src/Topos.Hypergraph/LabelPropagation.cs:17-65]</code></p>
+<pre><code class="language-csharp">public static class LabelPropagation
+{
+    public static IReadOnlyDictionary&lt;Handle, int&gt; DetectCommunities(IHypergraphQuery graph, int maxIterations = 100);
+}
+</code></pre>
+<p>Returns a vertex→community-id map. Ties broken by lowest label; fixed seed for deterministic output;
+isolated vertices keep their own label. <strong>Chosen over Louvain deliberately</strong> — Louvain is
+substantially more complex to get right, and Label Propagation gives real, GDS-verified community
+detection today. <code>[verified:src=src/Topos.Hypergraph/LabelPropagation.cs:3-15]</code></p>
+<h4 id="trianglecount"><code>TriangleCount</code></h4>
+<p>Triangle counting over bipartite adjacency. GDS-verified (<code>gds.triangleCount</code>).
+<code>[verified:src=src/Topos.Hypergraph/TriangleCount.cs:24-50]</code></p>
+<pre><code class="language-csharp">public static class TriangleCount
+{
+    public static long Count(IHypergraphQuery graph);
+}
+</code></pre>
+<p><strong>Non-obvious consequence of the bipartite reification:</strong> an N-member hyperedge and its members form
+a complete graph on N+1 vertices, giving <code>C(N+1, 3)</code> triangles from one hyperedge. A plain 2-member
+edge already yields 1 triangle (<code>C(3,3) = 1</code>); a 3-member edge yields 4.
+<code>[verified:src=src/Topos.Hypergraph/TriangleCount.cs:13-23]</code></p>
+<h4 id="modularity"><code>Modularity</code></h4>
+<p>Newman's modularity Q for a given partition. <strong>A scorer, not a detector</strong> — pass it
+<code>LabelPropagation.DetectCommunities</code>'s output. <code>[verified:src=src/Topos.Hypergraph/Modularity.cs:12-72]</code></p>
+<pre><code class="language-csharp">public static class Modularity
+{
+    public static double Compute(IHypergraphQuery graph, IReadOnlyDictionary&lt;Handle, int&gt; communities);
+}
+</code></pre>
+<p>Returns <code>0.0</code> for an edgeless graph. <strong>Asymmetry to know:</strong> vertices missing from <code>communities</code> are
+excluded from the internal-edges numerator but grouped into a synthetic community (key <code>-1</code>) for the
+degree-sum-of-squares penalty — so omitting vertices can only push Q down, never up. Pass a partition
+covering every vertex for a meaningful score. <code>[verified:src=src/Topos.Hypergraph/Modularity.cs:15-28]</code></p>
+<h3 id="46-persistence-toposhypergraphpersistence">4.6 Persistence — <code>Topos.Hypergraph.Persistence</code></h3>
+<p>Save/load a kernel's topology + caller-specified property columns to/from a <code>Stream</code>. Spec §6 M4.</p>
+<h4 id="hypergraphsnapshot"><code>HypergraphSnapshot</code></h4>
+<p>Static save/load entry points. <code>[verified:src=src/Topos.Hypergraph.Persistence/HypergraphSnapshot.cs:45-139]</code></p>
+<pre><code class="language-csharp">public static class HypergraphSnapshot
+{
+    public static void Save(HypergraphKernel kernel, Stream stream, IReadOnlyList&lt;IPersistedPropertyColumn&gt;? properties = null);
+    public static HypergraphKernel Load(Stream stream, IReadOnlyList&lt;IPersistedPropertyColumn&gt;? properties = null);
+}
+</code></pre>
+<p>Versioned binary format (magic <code>0x53485054</code> "TPHS", format version 1). Columnar for properties. <strong>Invariant 1 preserved across reload:</strong>
+<code>Save</code> writes <code>NextHandleIndex</code>; <code>Load</code> constructs the new kernel with that as the allocator's start,
+so the first post-reload vertex gets a fresh Index, never a collision.
+<code>[verified:src=src/Topos.Hypergraph.Persistence/HypergraphSnapshot.cs:16-23]</code></p>
+<p><strong>Scope, plainly stated:</strong> this is <em>not</em> a transparent hot/cold hybrid kernel and <em>not</em> an LSM tree
+(no WAL/compaction/crash safety beyond a completed write). The transparent tiered version is real
+follow-on work. <code>[verified:src=src/Topos.Hypergraph.Persistence/HypergraphSnapshot.cs:25-44]</code></p>
+<h4 id="ipersistedpropertycolumn"><code>IPersistedPropertyColumn</code></h4>
+<p>Non-generic handle for a heterogeneous list of typed property columns.
+<code>[verified:src=src/Topos.Hypergraph.Persistence/PersistedProperty.cs:9-14]</code></p>
+<pre><code class="language-csharp">public interface IPersistedPropertyColumn
+{
+    string Name { get; }
+    void WriteTo(HypergraphKernel kernel, BinaryWriter writer);
+    void ReadFrom(HypergraphKernel kernel, BinaryReader reader);
+}
+</code></pre>
+<p>Lets <code>Save</code>/<code>Load</code> take one flat <code>IReadOnlyList</code> mixing columns of different <code>T</code>s. The generic
+implementing class <code>PersistedPropertyColumn&lt;T&gt;</code> is <code>internal</code>.</p>
+<h4 id="persistedproperty"><code>PersistedProperty</code></h4>
+<p>Factory for column codecs — common types plus a custom escape hatch.
+<code>[verified:src=src/Topos.Hypergraph.Persistence/PersistedProperty.cs:51-81]</code></p>
+<pre><code class="language-csharp">public static class PersistedProperty
+{
+    public static IPersistedPropertyColumn Int32(PropertyKey&lt;int&gt; key);
+    public static IPersistedPropertyColumn Int64(PropertyKey&lt;long&gt; key);
+    public static IPersistedPropertyColumn Double(PropertyKey&lt;double&gt; key);
+    public static IPersistedPropertyColumn Single(PropertyKey&lt;float&gt; key);
+    public static IPersistedPropertyColumn Boolean(PropertyKey&lt;bool&gt; key);
+    public static IPersistedPropertyColumn String(PropertyKey&lt;string&gt; key);
+    public static IPersistedPropertyColumn Byte(PropertyKey&lt;byte&gt; key);
+    public static IPersistedPropertyColumn DateOnly(PropertyKey&lt;DateOnly&gt; key);   // day-number encoded
+    public static IPersistedPropertyColumn Custom&lt;T&gt;(PropertyKey&lt;T&gt; key, Action&lt;BinaryWriter, T&gt; write, Func&lt;BinaryReader, T&gt; read);
+}
+</code></pre>
+<p>Deliberately not fully-generic-automatic — the caller states up front which properties to persist and
+how. <code>[verified:src=src/Topos.Hypergraph.Persistence/PersistedProperty.cs:45-50]</code></p>
+<h4 id="lrucache"><code>LruCache&lt;TKey, TValue&gt;</code></h4>
+<p>Classic O(1) LRU cache — the tested hot-tier building block for future tiered storage.
+<code>[verified:src=src/Topos.Hypergraph.Persistence/LruCache.cs:13]</code></p>
+<pre><code class="language-csharp">public sealed class LruCache&lt;TKey, TValue&gt; where TKey : notnull
+{
+    public LruCache(int capacity);
+    public int Capacity { get; }
+    public int Count { get; }
+    public bool TryGet(TKey key, out TValue value);
+    public bool ContainsKey(TKey key);
+    public (TKey Key, TValue Value)? Set(TKey key, TValue value);  // returns evicted pair, if any
+    public bool Remove(TKey key);
+}
+</code></pre>
+<p>Dictionary + intrusive doubly-linked list. Not thread-safe on its own. <code>Set</code> returns the evicted pair
+if the insertion caused an eviction — the caller's cue to flush to the cold tier.
+<code>[verified:src=src/Topos.Hypergraph.Persistence/LruCache.cs:3-12]</code></p>
+<h3 id="47-knowledge-toposhypergraphknowledge">4.7 Knowledge — <code>Topos.Hypergraph.Knowledge</code></h3>
+<p>Layer-1 role-aware directed traversal. Spec §6 M9. A separate package (own assembly); pure consumer
+of <code>IHypergraphQuery</code> — <strong>no kernel changes.</strong> Generalizes a pattern three independent consumers
+(ChatMemory, NexusVerifier, Rich-Learning-Base's <code>ToposGraphProjection</code>) each hand-rolled.
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/Topos.Hypergraph.Knowledge.csproj]</code></p>
+<h4 id="directedtraversal"><code>DirectedTraversal</code></h4>
+<p>Role-aware directed traversal over <code>IHypergraphQuery</code>.
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:17-113]</code></p>
+<pre><code class="language-csharp">public static class DirectedTraversal
+{
+    // BFS following only hyperedges where the frontier vertex holds fromRole, landing on toRole members.
+    public static IReadOnlyList&lt;Handle&gt; DirectedBfs(this IHypergraphQuery graph, Handle start, byte fromRole, byte toRole);
+
+    // One shortest directed path following only fromRole→toRole legs. Empty if unreachable; [from] if from==to.
+    public static IReadOnlyList&lt;Handle&gt; DirectedShortestPath(this IHypergraphQuery graph, Handle from, Handle to, byte fromRole, byte toRole);
+
+    // One-hop: members of vertex's hyperedges holding the given role.
+    public static IReadOnlyList&lt;Handle&gt; RoleFilteredMembers(this IHypergraphQuery graph, Handle vertex, byte role);
+}
+</code></pre>
+<p>This is where "the kernel does not judge" gets its judgment: given a directed reading of hyperedge
+roles, walk only along that direction. All three are extension methods on <code>IHypergraphQuery</code>, so they
+work over a kernel, a <code>FilteredView</code>, a <code>UnionView</code> — any source.
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:3-16]</code></p>
+<h4 id="roleextensions"><code>RoleExtensions</code></h4>
+<p>Turns <code>docs/ROLE_CONVENTIONS.md</code>'s byte-backed-enum pattern into real code — typed-role overloads of
+the above, plus <code>AddIncidence&lt;TRole&gt;</code>.
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/RoleExtensions.cs:15-54]</code></p>
+<pre><code class="language-csharp">public static class RoleExtensions
+{
+    public static Incidence AddIncidence&lt;TRole&gt;(this HypergraphKernel kernel, Handle source, Handle member, TRole role, int ordinal)
+        where TRole : unmanaged, Enum;
+
+    public static IReadOnlyList&lt;Handle&gt; DirectedBfs&lt;TRole&gt;(this IHypergraphQuery graph, Handle start, TRole fromRole, TRole toRole)
+        where TRole : unmanaged, Enum;
+
+    public static IReadOnlyList&lt;Handle&gt; DirectedShortestPath&lt;TRole&gt;(this IHypergraphQuery graph, Handle from, Handle to, TRole fromRole, TRole toRole)
+        where TRole : unmanaged, Enum;
+
+    public static IReadOnlyList&lt;Handle&gt; RoleFilteredMembers&lt;TRole&gt;(this IHypergraphQuery graph, Handle vertex, TRole role)
+        where TRole : unmanaged, Enum;
+}
+</code></pre>
+<p><code>TRole</code> must be a <strong>byte-backed</strong> enum (<code>enum Foo : byte</code>) — a wider underlying type (e.g. <code>int</code>)
+throws <code>ArgumentException</code>. <code>[verified:src=src/Topos.Hypergraph.Knowledge/RoleExtensions.cs:37-53]</code></p>
+<p>Usage: <code>[verified:src=tests/Topos.Hypergraph.Knowledge.Tests/DirectedTraversalTests.cs:38-46]</code></p>
+<pre><code class="language-csharp">public enum ChainerRole : byte { Anchor = 0, Condition = 1, Target = 2 }
+
+IHypergraphQuery query = kernel;
+var reachable = query.DirectedBfs(start, ChainerRole.Anchor, ChainerRole.Target);
+kernel.AddIncidence(edge, target, ChainerRole.Target, ordinal: 2);
+</code></pre>
+<h3 id="48-internal-types-not-public-api">4.8 Internal types — not public API</h3>
+<p>These exist behind <code>InternalsVisibleTo</code> (granted to <code>Topos.Hypergraph.Tests</code> and
+<code>Topos.Hypergraph.Benchmarks</code> in <code>Topos.Hypergraph.csproj</code>) for direct test/benchmark access. They
+are <strong>not</strong> part of the public surface and may change without notice.
+<code>[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj — InternalsVisibleTo entries]</code></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Source</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SparseSet&lt;T&gt;</code></td>
+<td><code>src/Topos.Hypergraph/SparseSet.cs</code></td>
+<td>EnTT-style columnar pool backing every property/vertex store. O(1) add/remove/lookup; the kernel's public surface is <code>IHypergraphQuery</code>/<code>HypergraphKernel</code>, not this. <code>[verified:src=src/Topos.Hypergraph/SparseSet.cs:18-24]</code></td>
+</tr>
+<tr>
+<td><code>PropertyPool&lt;T&gt;</code></td>
+<td><code>src/Topos.Hypergraph/PropertyPool.cs</code></td>
+<td>A <code>SparseSet&lt;T&gt;</code> behind its own <code>ReaderWriterLockSlim</code> — the per-pool-lock of spec §3.4.</td>
+</tr>
+<tr>
+<td><code>IncidenceIndex</code></td>
+<td><code>src/Topos.Hypergraph/IncidenceIndex.cs</code></td>
+<td>Key→many-Incidences index backing both kernel directions; replaced an O(N²) copy-on-write design.</td>
+</tr>
+<tr>
+<td><code>BipartiteAdjacency</code></td>
+<td><code>src/Topos.Hypergraph/BipartiteAdjacency.cs</code></td>
+<td>Shared neighbor-gathering for M6 analytics. <code>[verified:src=src/Topos.Hypergraph/BipartiteAdjacency.cs:13]</code></td>
+</tr>
+<tr>
+<td><code>PersistedPropertyColumn&lt;T&gt;</code></td>
+<td><code>src/Topos.Hypergraph.Persistence/PersistedProperty.cs:16</code></td>
+<td>Generic implementing class of <code>IPersistedPropertyColumn</code>. <code>[verified:src=src/Topos.Hypergraph.Persistence/PersistedProperty.cs:16-43]</code></td>
+</tr>
+</tbody>
+</table>
+<p>If you find yourself wanting one of these from a consumer, that's a signal worth reporting — either
+your use case is genuinely novel (and the public surface should grow), or there's a public-API way
+to do what you want that you haven't found. File it as a finding rather than reaching for
+<code>InternalsVisibleTo</code>.</p>
+<hr />
+<h2 id="5-usage-patterns">5. Usage patterns</h2>
+<blockquote>
+<p>Every pattern here is built <strong>purely from the public API</strong> (<code>Topos.Hypergraph</code>, optionally
+<code>Topos.Hypergraph.Knowledge</code>, optionally <code>Topos.Hypergraph.Persistence</code>) — no internal access, no
+kernel changes. That's not a constraint of this doc; it's the falsifiability standard the kernel
+itself holds to (see the M5 sample). <code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs:5-18]</code></p>
+</blockquote>
+<h3 id="51-n-ary-facts-as-one-hyperedge">5.1 N-ary facts as one hyperedge</h3>
+<p><strong>When to use:</strong> whenever a single event jointly involves N participants and the <em>togetherness</em> is
+load-bearing — one utterance mentioning several entities, one decision jointly gated by several
+conditions, one transaction touching several accounts. <strong>The whole reason Topos exists.</strong></p>
+<p>The thesis (spec §1): a binary graph can encode the <em>topology</em> of an n-ary event as a star, but it
+loses the <em>atomicity</em> — joint credit assignment, joint statistics, and the "all-conditions-present"
+gate have no faithful home on per-leg edges. One hyperedge preserves all three.
+<code>[verified:docs=docs/SPECIFICATION.md §1.2]</code></p>
+<pre><code class="language-csharp">using Topos.Hypergraph;
+
+var kernel = new HypergraphKernel();
+
+// A turn that mentioned three entities — one atomic relationship, not three edges.
+public enum MentionRole : byte { Speaker = 0, Entity = 1 }
+
+Handle turn  = kernel.CreateVertex();
+Handle kyoto = kernel.CreateVertex();
+Handle nara  = kernel.CreateVertex();
+Handle osaka = kernel.CreateVertex();
+
+Handle mention = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(mention, turn,  (byte)MentionRole.Speaker, ordinal: 0);
+kernel.AddIncidence(mention, kyoto, (byte)MentionRole.Entity,  ordinal: 1);
+kernel.AddIncidence(mention, nara,  (byte)MentionRole.Entity,  ordinal: 2);
+kernel.AddIncidence(mention, osaka, (byte)MentionRole.Entity,  ordinal: 3);
+</code></pre>
+<p>One hyperedge, four members — and "these three were mentioned <em>together</em>, in this one turn" is stored
+structurally, not reconstructed from three separate edges. This is the exact shape of
+<code>samples/Topos.Samples.ChatMemory.RecordMention</code>. <code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs:66-79]</code></p>
+<p><strong>Variation — directed n-ary (Anchor fires toward Target, gated by Conditions):</strong> this is RLB's
+<code>HyperEdge</code> shape, generalized. Same primitives, different role bytes.
+<code>[verified:docs=docs/SPECIFICATION.md §1.1]</code></p>
+<pre><code class="language-csharp">public enum ChainerRole : byte { Anchor = 0, Condition = 1, Target = 2 }
+
+Handle anchor    = kernel.CreateVertex();
+Handle condition = kernel.CreateVertex();
+Handle target    = kernel.CreateVertex();
+
+Handle decision = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(decision, anchor,    (byte)ChainerRole.Anchor,    ordinal: 0);
+kernel.AddIncidence(decision, condition, (byte)ChainerRole.Condition, ordinal: 1);
+kernel.AddIncidence(decision, target,    (byte)ChainerRole.Target,    ordinal: 2);
+</code></pre>
+<h3 id="52-reification-edges-as-vertices">5.2 Reification: edges as vertices</h3>
+<p><strong>When to use:</strong> when you need to say something <em>about</em> a relationship — attach properties to it,
+link it into another relationship, or record its epistemic status.</p>
+<p>Reification is already built into the kernel: a hyperedge <em>is</em> a vertex tagged <code>VertexRoles.Edge</code>.
+So you can attach properties to it, link it into other edges, and treat it as first-class — no
+special API.</p>
+<h4 id="52a-epistemic-mode-asserted-quoted-hypothesized">5.2a — Epistemic mode (asserted / quoted / hypothesized)</h4>
+<pre><code class="language-csharp">PropertyKey&lt;AssertionMode&gt; mode = kernel.ResolveProperty&lt;AssertionMode&gt;(&quot;mode&quot;);
+
+// A fact extracted from a turn, marked as a candidate belief (not yet confirmed).
+Handle fact = kernel.CreateVertex(VertexRoles.Edge);
+kernel.SetProperty(mode, fact, AssertionMode.Hypothesized);
+
+AssertionMode? m = kernel.TryGetProperty(mode, fact, out var v) ? v : null;
+</code></pre>
+<p><code>AssertionMode</code> is a plain typed property — not a reserved Vertex field — so a missing value means
+"no mode recorded," not "defaulted to Asserted." Interpretation is a layer-1 concern: Topos stores
+the flag, your code decides what to do with it. <code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs:88-99]</code></p>
+<h4 id="52b-nested-reification-structural-provenance">5.2b — Nested reification (structural provenance)</h4>
+<p>An edge can be a <em>member</em> of another edge — because an edge is just a vertex. This is how you record
+"fact F was derived from facts G and H" as structural provenance, not just a string label.</p>
+<pre><code class="language-csharp">// Two source facts.
+Handle factG = kernel.CreateVertex(VertexRoles.Edge);
+Handle factH = kernel.CreateVertex(VertexRoles.Edge);
+
+// A derived fact, linked back to its sources via Incidence.
+public enum DerivationRole : byte { Derived = 0, Source = 1 }
+
+Handle factF = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(factF, factG, (byte)DerivationRole.Source,  ordinal: 0);  // factG is a MEMBER here
+kernel.AddIncidence(factF, factH, (byte)DerivationRole.Source,  ordinal: 1);
+</code></pre>
+<p>This nests to arbitrary depth — <code>ReificationTests.DepthN_ChainOfNestedEdges_EveryLevelRoundTrips</code>
+exercises a depth-4 chain, and every level resolves correctly via <code>IncidencesFrom</code>/<code>IncidencesOf</code>.
+The two incidence indexes are independent, so a vertex being an edge <em>and</em> a member of another edge
+don't interfere. <code>[verified:src=tests/Topos.Hypergraph.Tests/ReificationTests.cs:28-57]</code></p>
+<blockquote>
+<p><strong>Provenance has two flavors — use the right one.</strong> <code>Provenance(Source, RecordedAt)</code> (a typed
+property) is for <em>leaf</em> provenance: where a fact came from <em>outside</em> the graph. Nested reification
+is for <em>structural</em> provenance: which other <em>in-graph</em> facts a fact was derived from. Use both
+together. <code>[verified:src=src/Topos.Hypergraph/Provenance.cs:10-16]</code></p>
+</blockquote>
+<h3 id="53-per-membership-cell-data-without-a-kernel-primitive">5.3 Per-membership ("cell") data without a kernel primitive</h3>
+<p><strong>When to use:</strong> when you need data that varies per <em>membership</em> — per (source, member) pair — rather
+than per vertex or per edge. Example: a confidence score that's different for each leg of a multi-leg
+decision.</p>
+<p><strong>There is no <code>SetProperty(key, incidence, value)</code> on the kernel, by decision (M8).</strong> The two real
+consumers that wanted per-cell data both got by without it.
+<code>[verified:src=src/Topos.Hypergraph/Incidence.cs:16-28]</code> Two workarounds:</p>
+<h4 id="53a-reify-the-membership-as-its-own-edge-vertex">5.3a — Reify the membership as its own edge-vertex</h4>
+<p>If the per-leg data is rich enough to deserve first-class status, make each membership a vertex:</p>
+<pre><code class="language-csharp">PropertyKey&lt;double&gt; legConfidence = kernel.ResolveProperty&lt;double&gt;(&quot;legConfidence&quot;);
+
+// Reify the (decision, condition) membership itself as a vertex, attach data to it.
+Handle leg = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(leg, decision,  (byte)ChainerRole.Anchor,    ordinal: 0);
+kernel.AddIncidence(leg, condition, (byte)ChainerRole.Condition, ordinal: 1);
+kernel.SetProperty(legConfidence, leg, 0.83);
+</code></pre>
+<p>This is "edges-as-vertices" applied one more level (Pattern 5.2b). Each membership is now a
+first-class vertex with ordinary per-Handle properties.</p>
+<h4 id="53b-keep-a-side-index-in-your-own-code">5.3b — Keep a side index in your own code</h4>
+<p>If the per-leg data is just a lookup table, keep it outside the kernel:</p>
+<pre><code class="language-csharp">// Keyed on the (Source, Member, Ordinal) triple — whatever identifies the cell.
+var legConfidence = new Dictionary&lt;(Handle Source, Handle Member, int Ordinal), double&gt;();
+
+legConfidence[(decision, condition, 1)] = 0.83;
+</code></pre>
+<p>Both are the patterns real consumers already use; there's no kernel-level shortcut. Pick (a) when the
+data deserves to participate in traversal/analytics (it becomes a real vertex), (b) when it's pure
+side-state that the graph never needs to walk over.</p>
+<h3 id="54-composable-views">5.4 Composable views</h3>
+<p><strong>When to use:</strong> to query a <em>slice</em> of a kernel without copying it, or to combine two kernels/views
+set-algebraically. All views implement <code>IHypergraphQuery</code>, so every algorithm works over them
+unchanged.</p>
+<h4 id="54a-subgraph-mask">5.4a — Subgraph / mask</h4>
+<pre><code class="language-csharp">using static Topos.Hypergraph.HypergraphViews;
+
+// A live view of only the active (non-dormant) vertices — re-evaluated on every call.
+IHypergraphQuery activeView = Mask(kernel, h =&gt;
+    kernel.TryGetVertex(h, out var v) &amp;&amp; v.Status == VertexStatus.Active);
+
+// BFS over the masked view — sees only active vertices.
+foreach (var v in activeView.GetBfs(start)) { /* ... */ }
+</code></pre>
+<p><code>Subgraph</code> and <code>Mask</code> are the same mechanism (a <code>FilteredView</code>) under two names. A member outside the
+view is silently dropped from an edge's reported membership, not an error.
+<code>[verified:src=src/Topos.Hypergraph/FilteredView.cs:11-23]</code></p>
+<h4 id="54b-union-intersect-difference">5.4b — Union / intersect / difference</h4>
+<pre><code class="language-csharp">IHypergraphQuery both     = Union(viewA, viewB);
+IHypergraphQuery shared   = Intersect(viewA, viewB);
+IHypergraphQuery onlyA    = Difference(viewA, viewB);
+</code></pre>
+<p><strong>Union conflict rule: <code>a</code> wins</strong> if a Handle resolves differently in both. <strong>Only meaningful when
+both sources share a Handle-identity space</strong> — two views from the same kernel qualify; two
+independently-constructed kernels do not. <code>[verified:src=src/Topos.Hypergraph/UnionView.cs:8-23]</code></p>
+<h4 id="54c-version-diff-via-monotonic-handleindex-in-kernel-no-persistence">5.4c — Version-diff via monotonic Handle.Index (in-kernel, no persistence)</h4>
+<p>A useful trick: because <code>Handle.Index</code> is monotonic and never reused, a Handle-Index threshold is a
+genuine temporal cut of one kernel's history. <code>[verified:src=src/Topos.Hypergraph/HypergraphViews.cs:24-36]</code></p>
+<pre><code class="language-csharp">uint snapshotAt = 1000;  // every Handle with Index &lt; 1000 existed at &quot;the snapshot point&quot;
+
+IHypergraphQuery asOfSnapshot = Subgraph(kernel, h =&gt; h.Index &lt; snapshotAt);
+IHypergraphQuery addedSince   = Difference(kernel, asOfSnapshot);  // &quot;what's new since the snapshot&quot;
+</code></pre>
+<p>This covers within-one-kernel-lifetime version-diffing today, with no persistence layer required.
+Cross-process/cross-session snapshots are M4's job (<code>HypergraphSnapshot</code>).</p>
+<h3 id="55-semantic-recall-vector-search">5.5 Semantic recall (vector search)</h3>
+<p><strong>When to use:</strong> to find the k nearest vertices by embedding similarity — the retrieval half of a
+RAG-style or memory-recall loop.</p>
+<p><code>VectorIndex</code> is a derived structure over <code>PropertyKey&lt;float[]&gt;</code> data; it adds no kernel storage and
+swaps in a real ANN algorithm later without touching the kernel. Brute-force today (correct, simple);
+true ANN is gated on a real workload's scale needs. <code>[verified:src=src/Topos.Hypergraph/VectorIndex.cs:3-19]</code></p>
+<pre><code class="language-csharp">PropertyKey&lt;float[]&gt; embedding = kernel.ResolveProperty&lt;float[]&gt;(&quot;embedding&quot;);
+var vectorIndex = new VectorIndex(kernel, embedding);
+
+// Store embeddings on vertices as you create them.
+kernel.SetProperty(embedding, turn1, [0.1f, 0.2f, 0.3f]);
+kernel.SetProperty(embedding, turn2, [0.15f, 0.22f, 0.31f]);
+
+// Recall the 5 nearest turns to a query embedding.
+IReadOnlyList&lt;(Handle Handle, float Distance)&gt; nearest =
+    vectorIndex.NearestNeighbors([0.12f, 0.21f, 0.32f], k: 5);
+</code></pre>
+<p>Squared Euclidean distance, ascending. Throws on <code>k &lt;= 0</code> or embedding-dimension mismatch.
+<code>[verified:src=src/Topos.Hypergraph/VectorIndex.cs:22-41]</code></p>
+<p><strong>Combined with feedback</strong> — recall quality improves when you record whether each recall was useful.
+<a href="#56-learnable-edges">§5.6</a>'s <code>EdgeStatistics</code> + a recall hyperedge closes that loop; see
+<code>samples/Topos.Samples.ChatMemory.RecordRecallFeedback</code> for the worked example.
+<code>[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs:104-113]</code></p>
+<h3 id="56-learnable-edges">5.6 Learnable edges</h3>
+<p><strong>When to use:</strong> when an edge's firing probability should learn from reward — the learning half of an
+adaptive loop. Generalizes RLB's <code>HyperEdge</code> theta parameters without RLB's fixed feature layout.</p>
+<pre><code class="language-csharp">PropertyKey&lt;LearnableEdge&gt; edgeWeight = kernel.ResolveProperty&lt;LearnableEdge&gt;(&quot;edgeWeight&quot;);
+
+// Initialize a learnable edge over 3 features (4 theta slots: 1 bias + 3 features).
+Handle edge = kernel.CreateVertex(VertexRoles.Edge);
+kernel.SetProperty(edgeWeight, edge, LearnableEdge.CreateUninitialized(featureCount: 3));
+
+// Evaluate firing probability given a feature vector.
+var features = new ReadOnlySpan&lt;float&gt;([1.0f, 0.5f, 0.2f]);
+var current = kernel.TryGetProperty(edgeWeight, edge, out var w) ? w : LearnableEdge.CreateUninitialized(3);
+float p = current.Evaluate(features);   // sigmoid(theta · [1, features...])
+
+// Reinforce: take a gradient-ascent step toward reward, write the new edge back.
+var reinforced = current.Reinforce(features, reward: 1.0f, learningRate: 0.1f);
+kernel.SetProperty(edgeWeight, edge, reinforced);
+</code></pre>
+<p><code>LearnableEdge</code> is an immutable value type — <code>Reinforce</code> returns a <em>new</em> instance and you <code>SetProperty</code>
+it back over the old one. <code>[verified:src=src/Topos.Hypergraph/LearnableEdge.cs:3-14]</code></p>
+<p><strong>Per-membership statistics</strong> ride alongside on the same edge:</p>
+<pre><code class="language-csharp">PropertyKey&lt;EdgeStatistics&gt; stats = kernel.ResolveProperty&lt;EdgeStatistics&gt;(&quot;stats&quot;);
+var s = kernel.TryGetProperty(stats, edge, out var existing) ? existing : EdgeStatistics.Initial;
+s = s.Observe(succeeded: true);   // EMA update
+kernel.SetProperty(stats, edge, s);
+</code></pre>
+<p>The EMA <code>Observe</code> rule is a default, not a mandate. <code>[verified:src=src/Topos.Hypergraph/EdgeStatistics.cs:3-13]</code></p>
+<h3 id="57-persistence-save-reload">5.7 Persistence (save / reload)</h3>
+<p><strong>When to use:</strong> to round-trip a kernel through disk — checkpoint state, reload across sessions, or
+hand a graph to another process.</p>
+<p><code>HypergraphSnapshot.Save/Load</code> serializes topology (vertices, incidences, allocator state) <strong>plus an
+explicit, caller-specified set of typed property columns</strong>. It does not introspect property types
+automatically. <code>[verified:src=src/Topos.Hypergraph.Persistence/HypergraphSnapshot.cs:45-88]</code></p>
+<pre><code class="language-csharp">using Topos.Hypergraph.Persistence;
+
+PropertyKey&lt;string&gt;  name      = kernel.ResolveProperty&lt;string&gt;(&quot;name&quot;);
+PropertyKey&lt;float[]&gt; embedding = kernel.ResolveProperty&lt;float[]&gt;(&quot;embedding&quot;);
+
+var columns = new IPersistedPropertyColumn[]
+{
+    PersistedProperty.String(name),
+    PersistedProperty.Single(embedding),   // float, not double
+};
+
+using (var stream = File.Create(&quot;memory.snap&quot;))
+    HypergraphSnapshot.Save(kernel, stream, columns);
+
+HypergraphKernel reloaded;
+using (var stream = File.OpenRead(&quot;memory.snap&quot;))
+    reloaded = HypergraphSnapshot.Load(stream, columns);   // same column list — names must match
+</code></pre>
+<p><strong>What this is and isn't:</strong> <code>[verified:src=src/Topos.Hypergraph.Persistence/HypergraphSnapshot.cs:25-44]</code></p>
+<ul>
+<li>It <em>is</em> an explicit save/load step that preserves Handle identity across reload (Invariant 1
+  intact: <code>Save</code> writes <code>NextHandleIndex</code>, <code>Load</code> resumes allocation after it).</li>
+<li>It is <em>not</em> a transparent hot/cold hybrid kernel (no auto-spill under memory pressure).</li>
+<li>It is <em>not</em> an LSM tree (no WAL, no compaction, no crash safety beyond a completed write).</li>
+<li>Built-in codecs cover <code>int</code>/<code>long</code>/<code>double</code>/<code>float</code>/<code>bool</code>/<code>string</code>/<code>byte</code>/<code>DateOnly</code>. Anything else
+  needs <code>PersistedProperty.Custom&lt;T&gt;</code>. <code>[verified:src=src/Topos.Hypergraph.Persistence/PersistedProperty.cs:53-80]</code></li>
+</ul>
+<p>The transparent tiered version is real follow-on work, gated on a forcing workload.
+<code>[verified:src=src/Topos.Hypergraph.Persistence/LruCache.cs:3-12]</code></p>
+<h3 id="58-directed-role-aware-traversal">5.8 Directed (role-aware) traversal</h3>
+<p><strong>When to use:</strong> when your hyperedge has direction (Anchor→Target, Speaker→Mention, Before→After) and
+the kernel's role-blind traversal would give the wrong answer. Requires the
+<code>Topos.Hypergraph.Knowledge</code> package (M9).</p>
+<p>Recall: every algorithm on <code>IHypergraphQuery</code> (<code>GetBfs</code>, <code>GetShortestPath</code>, etc.) is <strong>role-blind</strong>
+by design — "the kernel does not judge." Two unrelated consumers (ChatMemory, NexusVerifier) plus
+RLB's own <code>ToposGraphProjection</code> each hand-rolled the same ~10-line role-filtered walk before M9.
+<code>DirectedBfs</code>/<code>DirectedShortestPath</code>/<code>RoleFilteredMembers</code> generalize that pattern into a tested
+package. <code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:3-16]</code></p>
+<pre><code class="language-csharp">using Topos.Hypergraph;
+using Topos.Hypergraph.Knowledge;
+
+public enum ChainerRole : byte { Anchor = 0, Condition = 1, Target = 2 }
+
+IHypergraphQuery query = kernel;   // works over a kernel, a FilteredView, a UnionView — any source
+
+// Multi-hop: from `a`, reach everyone reachable via Anchor→Target legs.
+IReadOnlyList&lt;Handle&gt; reachable = query.DirectedBfs(a, ChainerRole.Anchor, ChainerRole.Target);
+
+// One-hop: every Target of `a`'s hyperedges (generalizes ChatMemory.EntitiesMentionedIn).
+IReadOnlyList&lt;Handle&gt; targets = query.RoleFilteredMembers(a, ChainerRole.Target);
+
+// Shortest directed path from `a` to `c`.
+IReadOnlyList&lt;Handle&gt; path = query.DirectedShortestPath(a, c, ChainerRole.Anchor, ChainerRole.Target);
+
+// Adding incidences with the typed role, no manual cast.
+kernel.AddIncidence(edge, target, ChainerRole.Target, ordinal: 2);
+</code></pre>
+<p><code>DirectedBfs</code> follows only hyperedges where the frontier vertex holds <code>fromRole</code>, landing on that
+edge's <code>toRole</code> members — so <code>Condition</code> members are correctly excluded from an Anchor→Target walk
+even though they share the same hyperedges.
+<code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:19-51]</code>
+<code>[verified:src=tests/Topos.Hypergraph.Knowledge.Tests/DirectedTraversalTests.cs:38-59]</code></p>
+<p><code>TRole</code> must be a <strong>byte-backed</strong> enum (<code>enum Foo : byte</code>) — a wider underlying type throws
+<code>ArgumentException</code>. <code>[verified:src=src/Topos.Hypergraph.Knowledge/RoleExtensions.cs:37-53]</code></p>
+<blockquote>
+<p><strong>Don't reach for <code>HasCycle</code> for cycle detection in a directed graph.</strong> At the kernel's role-blind
+layer, <code>HasCycle()</code> returns <code>true</code> almost always on any real n-ary hypergraph (three co-members are
+trivially "cyclic"). If you need directed cycle detection, walk with <code>DirectedBfs</code> and guard the
+current path yourself. <code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:277-306]</code></p>
+</blockquote>
+<hr />
+<h2 id="6-mcp-server-agent-tool-calling">6. MCP server — agent tool-calling</h2>
+<p><strong>M10 (implemented 2026-07-27).</strong> The <code>Topos.Hypergraph.Mcp</code> package exposes Topos's public API
+as <strong>Model Context Protocol tools</strong>, so any MCP-aware agent (Claude Code, Cursor, Continue, ZCode,
+anything speaking the 2025-11-25 MCP spec) can create vertices, build n-ary hyperedges, query
+traversals, and run directed/role-aware search — <strong>without writing any C#</strong>. Built on Microsoft's
+official <code>ModelContextProtocol</code> C# SDK (v1.4.1).
+<code>[verified:src=src/Topos.Hypergraph.Mcp/Topos.Hypergraph.Mcp.csproj]</code>
+<code>[verified:docs=docs/DECISIONS.md — "M10 APPROVED AND IMPLEMENTED" entry]</code></p>
+<h3 id="61-what-it-is">6.1 What it is</h3>
+<p>A thin JSON-RPC wrapper over Topos's existing, tested primitives — <strong>no new graph logic, no kernel
+changes.</strong> Every tool method is a ~5-line call into <code>HypergraphKernel</code>, <code>IHypergraphQuery</code>,
+<code>DirectedTraversal</code>, or <code>VectorIndex</code>. The server stays dumb and faithful — the same
+<strong>"kernel records; it does not judge"</strong> philosophy applied to a new shape: the <em>agent</em> (layer 1)
+decides what role bytes mean and what cardinalities to enforce, not the server.
+<code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:7-18 — the class doc]</code></p>
+<p>Three files, ~480 lines total: <code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs]</code>
+<code>[verified:src=src/Topos.Hypergraph.Mcp/TypeMapping.cs]</code> <code>[verified:src=src/Topos.Hypergraph.Mcp/Transport/StdioHost.cs]</code></p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ToposMcpServer.cs</code></td>
+<td>The <code>[McpServerToolType]</code> class — all 18 <code>[McpServerTool]</code> methods.</td>
+</tr>
+<tr>
+<td><code>TypeMapping.cs</code></td>
+<td><code>Handle</code> ↔ opaque wire string; the <code>PropertyValue</code> tagged union; result DTOs.</td>
+</tr>
+<tr>
+<td><code>Transport/StdioHost.cs</code></td>
+<td>The host entry point — wires stdio transport + tool registration.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Design (per the M10 decision, all four §5 forks resolved):</strong> stateful single-session (one
+<code>HypergraphKernel</code> per server process, no persistence, state lost on exit); stdio transport only;
+opaque-string Handles; tagged-union property values. <code>[verified:docs=docs/DECISIONS.md — M10 entry, all four forks]</code></p>
+<h3 id="62-wire-it-into-an-agent">6.2 Wire it into an agent</h3>
+<p>The server speaks stdio — the canonical agent transport. An agent spawns it as a subprocess. Two
+ways to register it:</p>
+<p><strong>The repo's own <code>.mcp.json</code></strong> (used by ZCode, Claude Code, etc. — copy this shape into your
+project's <code>.mcp.json</code>):</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;topos&quot;: {
+      &quot;command&quot;: &quot;dotnet&quot;,
+      &quot;args&quot;: [
+        &quot;run&quot;,
+        &quot;--project&quot;,
+        &quot;path/to/Topos/src/Topos.Hypergraph.Mcp/Topos.Hypergraph.Mcp.csproj&quot;,
+        &quot;-c&quot;,
+        &quot;Release&quot;,
+        &quot;--no-build&quot;
+      ]
+    }
+  }
+}
+</code></pre>
+<p><code>[verified:src=samples/Topos.Samples.McpAgent/.mcp.json.example]</code>
+<code>[verified:src=samples/Topos.Samples.McpAgent/README.md]</code></p>
+<p>Then restart your agent. It discovers the 18 tools automatically via MCP's <code>tools/list</code> and can
+call them via <code>tools/call</code>.</p>
+<blockquote>
+<p><strong>Build first:</strong> <code>dotnet build src/Topos.Hypergraph.Mcp -c Release</code> from the repo root before
+the agent first spawns it (the <code>--no-build</code> flag assumes a built binary).
+<code>[verified:src=samples/Topos.Samples.McpAgent/README.md:9]</code></p>
+</blockquote>
+<h3 id="63-the-18-tools">6.3 The 18 tools</h3>
+<p>Each is a <code>[McpServerTool]</code> method on <code>ToposMcpServer</code>, wrapping the cited primitive. Tool names
+use <code>snake_case</code> (MCP convention); parameters are JSON.</p>
+<h4 id="vertices">Vertices</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Wraps</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create_vertex</code></td>
+<td><code>HypergraphKernel.CreateVertex(VertexRoles)</code> — set <code>isEdge=true</code> for a hyperedge</td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:26-31]</code> <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:51-62]</code></td>
+</tr>
+<tr>
+<td><code>get_vertex</code></td>
+<td><code>TryGetVertex</code> — returns null for unallocated handles</td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:33-40]</code></td>
+</tr>
+<tr>
+<td><code>count_vertices</code></td>
+<td><code>CountVertices</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:42-43]</code></td>
+</tr>
+<tr>
+<td><code>set_vertex_status</code></td>
+<td><code>SetDormant</code> / <code>Reactivate</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:45-51]</code> <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:100-106]</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="incidences">Incidences</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Wraps</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>add_incidence</code></td>
+<td><code>AddIncidence(source, member, byte role, ordinal)</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:55-60]</code> <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:116-126]</code></td>
+</tr>
+<tr>
+<td><code>get_hyperedge_vertices</code></td>
+<td><code>GetHyperedgeVertices</code> — every incidence on a hyperedge</td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:62-67]</code></td>
+</tr>
+<tr>
+<td><code>get_vertex_hyperedges</code></td>
+<td><code>GetVertexHyperedges</code> — every hyperedge a vertex belongs to</td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:69-74]</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="typed-properties-tagged-union">Typed properties (tagged union)</h4>
+<p>The wire shape is a tagged union — <code>value.Type</code> selects which field is read. <strong>Four types are
+supported:</strong> <code>"string"</code>, <code>"number"</code> (double), <code>"bool"</code>, <code>"embedding"</code> (float[]). Unknown types
+throw <code>ArgumentException</code>. <code>[verified:src=src/Topos.Hypergraph.Mcp/TypeMapping.cs:53-60]</code>
+<code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:78-104]</code></p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Wraps</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_property</code></td>
+<td><code>SetProperty&lt;T&gt;</code> — <code>value</code> is <code>{Type, StringValue/NumberValue/BoolValue/EmbeddingValue}</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:78-104]</code> <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:154-156]</code></td>
+</tr>
+<tr>
+<td><code>get_property</code></td>
+<td><code>TryGetProperty&lt;T&gt;</code> — <code>type</code> selects the pool</td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:106-119]</code></td>
+</tr>
+<tr>
+<td><code>remove_property</code></td>
+<td><code>RemoveProperty&lt;T&gt;</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:121-133]</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Type narrowness is deliberate for v1.</strong> <code>int</code>, <code>long</code>, <code>DateOnly</code>, <code>byte</code>, and custom types
+aren't in the tagged union — agents overwhelmingly store names, scores, flags, and embeddings,
+and an agent wanting a date can store an ISO string. Adding more types is a v1.1 concern.</p>
+</blockquote>
+<h4 id="kernel-level-query-role-blind-topology-only">Kernel-level query (role-blind, topology-only)</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Wraps</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>is_reachable</code></td>
+<td><code>IHypergraphQuery.IsReachable</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:137-139]</code></td>
+</tr>
+<tr>
+<td><code>shortest_path</code></td>
+<td><code>GetShortestPath</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:141-146]</code></td>
+</tr>
+<tr>
+<td><code>bfs</code></td>
+<td><code>GetBfs</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:148-153]</code></td>
+</tr>
+<tr>
+<td><code>connected_components</code></td>
+<td><code>GetConnectedComponents</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:155-160]</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="knowledge-m9-role-aware-directed-traversal">Knowledge (M9) — role-aware directed traversal</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Wraps</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>directed_bfs</code></td>
+<td><code>DirectedTraversal.DirectedBfs</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:164-169]</code> <code>[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:19-51]</code></td>
+</tr>
+<tr>
+<td><code>directed_shortest_path</code></td>
+<td><code>DirectedTraversal.DirectedShortestPath</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:171-176]</code></td>
+</tr>
+<tr>
+<td><code>role_filtered_members</code></td>
+<td><code>DirectedTraversal.RoleFilteredMembers</code></td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:178-183]</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="semantic-recall-m5">Semantic recall (M5)</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Wraps</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>semantic_recall</code></td>
+<td><code>VectorIndex.NearestNeighbors</code> — exact k-NN over a named embedding property</td>
+<td><code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:187-193]</code> <code>[verified:src=src/Topos.Hypergraph/VectorIndex.cs:30-41]</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="64-a-worked-example-agent-builds-and-queries-a-hyperedge">6.4 A worked example: agent builds and queries a hyperedge</h3>
+<p>This is the round-trip an agent actually performs — the same shape the test suite pins
+(<code>EndToEnd_Hyperedge_Bfs_And_RoleAware_Traversal</code>) and the same shape verified live over the
+real stdio transport in the M10 dogfooding pass.
+<code>[verified:src=tests/Topos.Hypergraph.Mcp.Tests/ToposMcpServerTests.cs:61-99]</code>
+<code>[verified:docs=docs/DECISIONS.md — M10 entry, "initialize/tools/list/tools/call JSON-RPC frames sent by hand"]</code></p>
+<p>Conceptually, the agent calls these tools in order (no C# written by the agent's author):</p>
+<pre><code class="language-text">1. create_vertex()                              → &quot;#0&quot;  (alice)
+2. create_vertex()                              → &quot;#1&quot;  (kyoto)
+3. create_vertex()                              → &quot;#2&quot;  (nara)
+4. create_vertex()                              → &quot;#3&quot;  (osaka)
+5. create_vertex(isEdge=true)                   → &quot;#4&quot;  (the hyperedge)
+
+6. add_incidence(source=&quot;#4&quot;, member=&quot;#0&quot;, role=0, ordinal=0)   # alice is the Speaker
+7. add_incidence(source=&quot;#4&quot;, member=&quot;#1&quot;, role=1, ordinal=1)   # kyoto is Mentioned
+8. add_incidence(source=&quot;#4&quot;, member=&quot;#2&quot;, role=1, ordinal=2)   # nara is Mentioned
+9. add_incidence(source=&quot;#4&quot;, member=&quot;#3&quot;, role=1, ordinal=3)   # osaka is Mentioned
+
+10. set_property(handle=&quot;#1&quot;, name=&quot;displayName&quot;,
+                value={Type=&quot;string&quot;, StringValue=&quot;Kyoto&quot;})
+
+11. is_reachable(from=&quot;#0&quot;, to=&quot;#3&quot;)            → true   (co-incident on #4)
+12. role_filtered_members(vertex=&quot;#0&quot;, role=1)  → [&quot;#1&quot;, &quot;#2&quot;, &quot;#3&quot;]  (the three mentions)
+13. directed_bfs(start=&quot;#0&quot;, fromRole=0, toRole=1)
+                                              → [&quot;#0&quot;, &quot;#1&quot;, &quot;#2&quot;, &quot;#3&quot;]  (multi-hop via Speaker→Mention)
+</code></pre>
+<p>Role bytes (<code>0</code> = Speaker, <code>1</code> = Mention) are the agent's convention — the server stores them
+faithfully and never interprets them, exactly like the kernel. See
+<a href="ROLE_CONVENTIONS.md"><code>docs/ROLE_CONVENTIONS.md</code></a> for the byte-backed-enum pattern.</p>
+<h3 id="65-whats-deliberately-not-exposed">6.5 What's deliberately not exposed</h3>
+<p>Three primitives are omitted from the MCP surface, by design (<code>docs/MCP_SERVER_SPEC.md §4</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Omitted</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RestoreVertex</code></td>
+<td>The only sanctioned Invariant-1 bypass (snapshot reload only). Exposing it over MCP would be a footgun — an agent could create real Handle collisions. <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:71-81]</code></td>
+</tr>
+<tr>
+<td><code>AllIncidences</code></td>
+<td>An internal-iteration helper for snapshot persistence, not a query an agent needs. <code>[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:134-140]</code></td>
+</tr>
+<tr>
+<td><code>HasCycle</code></td>
+<td>Returns <code>true</code> almost always on real n-ary hypergraphs (three co-members are trivially "cyclic") — a documented footgun at the API layer, worse over MCP where the agent can't see the warning in the XML doc. <code>[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:277-306]</code></td>
+</tr>
+</tbody>
+</table>
+<p>If an agent needs cycle detection in a <em>directed</em> sense, it walks with <code>directed_bfs</code> and guards
+the current path itself — the server doesn't pretend to offer a meaningful <code>has_cycle</code>.</p>
+<h3 id="66-state-lifetime-and-limitations">6.6 State lifetime and limitations</h3>
+<p><strong>Stateful, single-session:</strong> one <code>HypergraphKernel</code> lives for the server process's lifetime
+(<code>private static readonly HypergraphKernel Kernel = new();</code>). Everything an agent builds is <strong>lost
+when the process exits</strong> — there's no auto-persistence in v1. Restarting the agent (which
+respawns the subprocess) starts a fresh, empty graph.
+<code>[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:22]</code>
+<code>[verified:src=samples/Topos.Samples.McpAgent/README.md — "State lifetime" section]</code></p>
+<p><strong>Three things v1 deliberately does not include</strong> (each gated on a real consumer needing it,
+same discipline the rest of the project applies to deferrals):</p>
+<ul>
+<li><strong>No HTTP/SSE transport</strong> — stdio only. Remote-agent support is a v2 concern.</li>
+<li><strong>No multi-tenancy</strong> — one server, one kernel, one agent. Multi-tenant (N agents sharing one
+  server) is a v3 concern.</li>
+<li><strong>No auto-persistence</strong> — the M4 <code>HypergraphSnapshot</code> is the building block; wiring lifecycle
+  hooks to call it is v2 work, gated on a real consumer needing state to survive restarts.</li>
+</ul>
+<p>The full scope, design forks, and rationale are in <code>docs/MCP_SERVER_SPEC.md</code>; the build record
+and the live JSON-RPC dogfooding results are in <code>docs/DECISIONS.md</code>'s "M10 APPROVED AND
+IMPLEMENTED" entry.</p>
+<hr />
+<h2 id="cross-references-outside-this-file">Cross-references (outside this file)</h2>
+<ul>
+<li><strong>The full spec</strong> (storage contract, layer architecture, roadmap, design patterns) → <code>docs/SPECIFICATION.md</code>.</li>
+<li><strong>What's locked vs. open</strong> → <code>docs/SPECIFICATION.md §11</code> (quick-reference table) and <code>docs/DECISIONS.md</code>.</li>
+<li><strong>The MCP server's full design rationale</strong> (the five §5 forks, the forcing-function case, the v1 scope) → <code>docs/MCP_SERVER_SPEC.md</code>. The build record and live JSON-RPC dogfooding results are in <code>docs/DECISIONS.md</code>'s "M10 APPROVED AND IMPLEMENTED" entry.</li>
+<li><strong>Role-byte conventions</strong> (the <code>byte</code>-backed-enum pattern) → <code>docs/ROLE_CONVENTIONS.md</code>.</li>
+<li><strong>NuGet publish steps</strong> (the gated item, MIT license decision recorded) → <code>docs/NUGET_PUBLISH_CHECKLIST.md</code>.</li>
+<li><strong>GDS-oracle setup</strong> (the Neo4j correctness oracle behind the GDS-verified claims above) →
+  <code>docs/GDS_ORACLE_SETUP.md</code>.</li>
+</ul>
+</body>
+</html>

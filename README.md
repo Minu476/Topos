@@ -11,17 +11,22 @@ provenance.
 
 | | |
 |---|---|
-| **Packages** | `Topos.Hypergraph` (kernel + algorithms) · `Topos.Hypergraph.Persistence` (save/load) · `Topos.Hypergraph.Knowledge` (directed/role-aware traversal) |
+| **Packages** | `Topos.Hypergraph` (kernel + algorithms) · `Topos.Hypergraph.Persistence` (save/load) · `Topos.Hypergraph.Knowledge` (directed/role-aware traversal) · `Topos.Hypergraph.Mcp` (MCP server for agent tool-calling) |
 | **Target** | .NET 10 (`net10.0`), C# with `Nullable` + `ImplicitUsings` |
-| **Status** | M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done · M9 implemented. 179 tests pass. |
-| **License** | Not yet chosen — NuGet publishing is gated on this (see `docs/DECISIONS.md`, "M8 CLOSED" entry). |
+| **Status** | M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done · M9 implemented · M10 (MCP server) implemented. 192 tests pass. |
+| **License** | MIT (decided 2026-07-26 — see `docs/NUGET_PUBLISH_CHECKLIST.md`). |
 
 ---
 
 ## Get started in 5 minutes
 
-Topos targets **.NET 10** and is **not yet on NuGet** — reference it from source via a
-`ProjectReference`: `[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]`
+**The combined user documentation lives in [`docs/Documentation.md`](docs/Documentation.md)** — one
+file with the mental model, a runnable walkthrough, the full API reference, and usage patterns. That's
+the single doc to read or hand to a reviewer.
+
+Topos targets **.NET 10**. NuGet packages (`Topos.Hypergraph`, `Topos.Hypergraph.Persistence`,
+`Topos.Hypergraph.Knowledge`, `Topos.Hypergraph.Mcp`) are being prepped for first publish under MIT
+— until they're live, reference from source via a `ProjectReference`: `[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]`
 
 ```xml
 <ItemGroup>
@@ -29,6 +34,16 @@ Topos targets **.NET 10** and is **not yet on NuGet** — reference it from sour
   <!-- add Topos.Hypergraph.Knowledge for directed/role-aware traversal -->
   <!-- add Topos.Hypergraph.Persistence for save/load -->
 </ItemGroup>
+```
+
+To let an MCP-aware agent (Claude Code, Cursor, etc.) call the kernel directly without writing any
+C#, run `Topos.Hypergraph.Mcp` as a subprocess instead — see `samples/Topos.Samples.McpAgent/` for
+the `.mcp.json` wiring.
+
+Once published:
+
+```bash
+dotnet add package Topos.Hypergraph --prerelease
 ```
 
 Build a kernel, model one n-ary relationship (one utterance mentioning three entities = **one
@@ -59,7 +74,7 @@ bool reachable = ((IHypergraphQuery)kernel).IsReachable(alice, osaka);   // true
 ```
 
 Continue end-to-end (typed properties, save/reload, directed traversal) in
-**[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)**.
+**[`docs/Documentation.md`](docs/Documentation.md)** §3.
 
 Verify your environment against the whole solution: `[verified:src=Topos.sln]`
 
@@ -72,15 +87,19 @@ dotnet test Topos.sln
 
 ## Documentation
 
-### Using Topos
+**[`docs/Documentation.md`](docs/Documentation.md)** is the combined user-facing manual (concepts,
+getting started, API reference, usage patterns in one file). The component docs it was assembled
+from are also kept separately for readers who want a single-topic view:
 
 | Document | Audience | Purpose |
 |---|---|---|
-| [`docs/CONCEPTS.md`](docs/CONCEPTS.md) | **New users — start here** | The mental model: the four primitives (`Handle`/`Vertex`/`Incidence`/`PropertyKey<T>`), the two invariants, `Roles` vs. `VertexRoles`, the layer architecture, what Topos is *not*. |
-| [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | New users | A runnable walkthrough: create a kernel → typed properties → n-ary hyperedge → query → save/reload → directed traversal. |
-| [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | All users | Hand-written prose catalog of every public type, grouped by layer/package. Includes the internal-types-not-public-API list. |
-| [`docs/USAGE_PATTERNS.md`](docs/USAGE_PATTERNS.md) | Implementers | How to model common agent-memory shapes: n-ary facts, reification, per-cell data, composable views, semantic recall, learnable edges, persistence, directed traversal. |
+| [`docs/Documentation.md`](docs/Documentation.md) | **All users** | **The combined manual** — read this one file, or hand it to a reviewer. |
+| [`docs/CONCEPTS.md`](docs/CONCEPTS.md) | New users | The mental model (4 primitives, 2 invariants, Roles vs. VertexRoles, layers). |
+| [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | New users | Runnable walkthrough. |
+| [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | All users | Hand-written prose catalog of every public type. |
+| [`docs/USAGE_PATTERNS.md`](docs/USAGE_PATTERNS.md) | Implementers | How to model common agent-memory shapes. |
 | [`docs/ROLE_CONVENTIONS.md`](docs/ROLE_CONVENTIONS.md) | Implementers | The `byte`-backed-enum pattern for domain role bytes (settled M8). |
+| [`docs/NUGET_PUBLISH_CHECKLIST.md`](docs/NUGET_PUBLISH_CHECKLIST.md) | Maintainer | MIT license decision + the executable NuGet-publish steps. |
 
 ### Why Topos exists — the design record
 
@@ -95,6 +114,7 @@ dotnet test Topos.sln
 | [`docs/GDS_ALGORITHM_TIERS.md`](docs/GDS_ALGORITHM_TIERS.md) | Resolves spec §12 Q9 — GDS Community/Enterprise tier per algorithm. |
 | [`docs/PARADOX_COMPRESSION_SEARCH.md`](docs/PARADOX_COMPRESSION_SEARCH.md) | Resolves spec §12 Q1 — the "paradox-compression" citation traced to an unrelated project. |
 | [`docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md`](docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md) | Six API-stability findings from the second real consumer — the M8 input. |
+| [`docs/MCP_SERVER_SPEC.md`](docs/MCP_SERVER_SPEC.md) | The M10 proposal (approved and implemented 2026-07-27) — the forcing-function case, the tool-surface design, and the five §5 forks, four of which Nasser resolved explicitly. |
 | [`docs/SESSION_HANDOFF.md`](docs/SESSION_HANDOFF.md) | Carry-on context across sessions — the first doc any agent reads on launch. |
 
 ---
@@ -114,10 +134,10 @@ AI-oriented embedded graph database — for on-device AI / privacy-focused graph
 ## Status
 
 **M0–M6 implemented; M7 (spectral) deferred by design; M8's API-stability scope is done; M9
-implemented.** The specification (`docs/SPECIFICATION.md`) was reviewed and approved before
-implementation started; `docs/DECISIONS.md` tracks what's locked vs. still open. M8's other spec
-items (HIF interchange, a docs site, NuGet publishing) are deliberately deferred pending a forcing
-consumer or a decision to go public — not in progress.
+implemented; M10 (MCP server) implemented.** The specification (`docs/SPECIFICATION.md`) was
+reviewed and approved before implementation started; `docs/DECISIONS.md` tracks what's locked vs.
+still open. M8's other spec items (HIF interchange, a docs site, NuGet publishing) are deliberately
+deferred pending a forcing consumer or a decision to go public — not in progress.
 
 - **M0** — storage kernel: `Handle`/`Vertex`/`Incidence`/`PropertyKey<T>`, the 2 invariants, SWMR
   concurrency (`ReaderWriterLockSlim`-per-pool). Benchmark-gated per spec §6, including a
@@ -134,8 +154,12 @@ consumer or a decision to go public — not in progress.
   (`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers`, `AddIncidence<TRole>`), generalizing
   a pattern three independent consumers (ChatMemory, RLB, NexusVerifier) had each hand-rolled. Exit
   criterion met: RLB's `ToposGraphProjection` now calls into it instead of its own copy.
+- **M10** — `Topos.Hypergraph.Mcp` package: a Model Context Protocol server exposing the kernel and
+  `Topos.Hypergraph.Knowledge` as 18 agent-callable tools (Microsoft's official `ModelContextProtocol`
+  C# SDK, stdio transport, stateful single-session). See `docs/MCP_SERVER_SPEC.md` for the design
+  and `docs/DECISIONS.md`'s "M10 APPROVED AND IMPLEMENTED" entry for the build record.
 
-179 tests pass across the kernel, persistence, sample, Knowledge, and GDS-parity suites. Topos is
+192 tests pass across the kernel, persistence, sample, Knowledge, Mcp, and GDS-parity suites. Topos is
 also a live `ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target —
 see `Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live
 Neo4j round-trips) passing against it.

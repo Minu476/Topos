@@ -571,6 +571,88 @@ In priority order:
   `Rich-Learning-Base/src/RichLearning.V2/RichLearning.V2.csproj` (new `ProjectReference`). No
   changes to `Topos.Hypergraph`'s kernel or public surface — M8's API-stability freeze stands.
 
+### 2026-07-27 — M10 APPROVED AND IMPLEMENTED: `Topos.Hypergraph.Mcp` server built, dogfooded via raw JSON-RPC
+
+- **Decider:** Nasser (explicit go/no-go on `docs/MCP_SERVER_SPEC.md`, then explicit answers on
+  all four §5 forks that matter for v1), executed by Sonnet 5 in the same session.
+- **Question:** GLM-5.2's overnight M10 proposal (`docs/MCP_SERVER_SPEC.md`) framed the
+  forcing-function case for an MCP server but explicitly left the go/no-go and all five §5 design
+  forks to Nasser. Before asking, this session verified the proposal's two load-bearing claims
+  rather than trusting them: (1) is `ModelContextProtocol` on NuGet real and net10.0-compatible —
+  yes, v1.4.1 as of 2026-07-09, confirmed via the NuGet listing; (2) is the proposal's "License:
+  MIT" claim correct — **no, it's Apache-2.0** (still compatible with Topos's MIT license as a
+  dependency, but the spec's own `[verified:web]` tag was wrong). Also surfaced a live
+  counter-precedent from this session's sibling-project context: `~/Projects/FSDE/src/
+  Fsde.McpServer/` already runs an MCP server today and deliberately does **not** use the official
+  SDK — it hand-rolled its own JSON-RPC/tool-dispatch layer. Presented both findings to Nasser
+  before asking go/no-go.
+- **Decision:** **Approve, build v1 today**, using the official SDK (not FSDE's hand-rolled
+  approach — that fork was asked and answered explicitly, not assumed). All four §5 forks that
+  gate v1 scope resolved to the spec's own tentative leans, confirmed rather than silently adopted:
+  - **(a) State model:** stateful, single-session — one `HypergraphKernel` per server process,
+    no persistence, lost on exit.
+  - **(b) Transport:** stdio only.
+  - **(d) Handle wire format:** opaque string (`"#3"`/`"#3g1"`, matching `Handle.ToString()`).
+  - **(e) Property values:** tagged union (`{Type, StringValue, NumberValue, BoolValue,
+    EmbeddingValue}`), not untyped JSON.
+  - **(c) Package boundary** wasn't asked separately — adopted the spec's in-repo lean
+    (`src/Topos.Hypergraph.Mcp/`) without a question, since it's the same low-stakes call M4/M9
+    already set precedent for and had no plausible counter-argument raised.
+- **What shipped:**
+  - New package `src/Topos.Hypergraph.Mcp/` (`ProjectReference` to `Topos.Hypergraph` and
+    `Topos.Hypergraph.Knowledge`; `PackageReference` to `ModelContextProtocol` 1.4.1 — no kernel
+    changes, per scope): `TypeMapping.cs` (Handle wire parsing, the `PropertyValue` tagged union,
+    DTOs), `ToposMcpServer.cs` (a `sealed class` — `WithTools<T>()` rejects a `static class` type
+    argument, the one place the spec's own sketch needed a real-world correction — with a
+    `[McpServerToolType]` static-method tool surface: 18 tools covering vertex/incidence CRUD,
+    typed property get/set/remove, kernel-level query (`is_reachable`/`shortest_path`/`bfs`/
+    `connected_components`), M9's `directed_bfs`/`directed_shortest_path`/`role_filtered_members`,
+    and `semantic_recall`), `Transport/StdioHost.cs` (the ~15-line stdio host). Deliberately not
+    exposed, per spec §4: `RestoreVertex`, `AllIncidences`, `HasCycle`.
+  - Tool return values are JSON-serialized to `string` rather than assumed to auto-serialize as
+    structured content — matching a real convention observed in the SDK's own `EverythingServer`
+    sample (`PrintEnvTool` does the same), found by checking the sample rather than guessing.
+  - `resolve_property` from the spec's §4 sketch was dropped from the tool surface (not a v1
+    deviation worth asking about) — `ResolveProperty<T>` is a cheap dictionary lookup per
+    `HypergraphKernel`'s own doc, so each typed `set_property`/`get_property`/`remove_property`
+    call just resolves inline; exposing a separate tool returning an "opaque id" nobody consumes
+    would have added agent-facing surface for no behavior.
+  - `tests/Topos.Hypergraph.Mcp.Tests/` — 13 tests calling the tool methods directly (not through a
+    live transport): the full README TripRole worked example end-to-end (create vertices, one
+    n-ary hyperedge, `bfs`/`is_reachable`/`directed_bfs`/`role_filtered_members`/
+    `directed_shortest_path`), CRUD round-trips for all four property types, `semantic_recall`,
+    and error paths (malformed handle string, unknown property type).
+  - `samples/Topos.Samples.McpAgent/` — `.mcp.json.example` + a short README (not a C# project,
+    per spec §6 item 7's "tiny agent config" framing).
+  - **Dogfooded via raw JSON-RPC over the real stdio transport** (not yet through a live
+    MCP-aware-agent session — that needs Nasser to restart Claude Code so it picks up the new
+    `topos` entry added to this repo's `.mcp.json`): sent real `initialize` / `tools/list` /
+    `tools/call` frames by hand, confirmed all 18 tools register with correct schemas, and
+    confirmed `create_vertex` → `add_incidence` → `is_reachable` behaves exactly per the kernel's
+    documented semantics (including a case that looks surprising until you read
+    `IHypergraphQuery.GetBfs`'s doc: the hyperedge vertex itself is never reachable from its own
+    members, since BFS only ever yields `Member`s, not the `Source` vertex — the wrapper faithfully
+    reproduces this, it isn't a wrapper bug).
+  - Full suite green: `dotnet test Topos.sln` — 141 kernel + 18 persistence + 9 ChatMemory + 11
+    Knowledge + 13 new Mcp = 192 tests (excluding the GDS-oracle suite's separate 9, which needs
+    its Docker container and is unaffected by this change).
+- **Rationale:** the spec's forcing-function case (§2) was accepted as sufficient by Nasser without
+  requiring a named ready consumer first — a deliberate departure from M9's stricter
+  three-independent-reinventions evidence bar, made consciously (§9's honest-risks section named
+  this distinction) rather than by default.
+- **What it changes:** `src/Topos.Hypergraph.Mcp/` (new), `tests/Topos.Hypergraph.Mcp.Tests/`
+  (new), `samples/Topos.Samples.McpAgent/` (new), `Topos.sln` (both new projects added), `.mcp.json`
+  (new `topos` entry, additive — the existing `fsde` entry is untouched). No changes to
+  `Topos.Hypergraph`'s or `Topos.Hypergraph.Knowledge`'s public surface — M8's API-stability
+  freeze stands; this is a pure consumer, same as RLB.
+- **What's still open, explicitly not this pass:** literal agent-in-the-loop dogfood (needs Nasser
+  to restart Claude Code and drive a couple of tool calls through the live `topos` MCP entry — the
+  raw-JSON-RPC dogfood above proves the wiring works but isn't the same as an agent doing it), the
+  `MCP_SERVER_SPEC.md`/`SPECIFICATION.md`/`README.md`/`AGENTS.md`/`SESSION_HANDOFF.md` status
+  updates (tracked separately, same session), and everything §7 of the spec named as deliberately
+  out of scope (HTTP/SSE transport, multi-tenancy, auto-persistence, NuGet publish of the Mcp
+  package).
+
 ---
 
 ## 7. Decision log format for future entries

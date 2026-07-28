@@ -273,7 +273,16 @@ Scope boundaries, to prevent creeping expectations (lifted from spec §2.2):
 - **Not a reasoning / entailment / belief-revision engine.** It stores `AssertionMode`
   (asserted/quoted/hypothesized) and `Provenance`, but it does not reason over them. No contradiction
   resolution, no truth maintenance, no logical entailment. Storing an `AssertionMode.Hypothesized`
-  flag is storage; revising beliefs from it is *your* job.
+  flag is storage; revising beliefs from it is *your* job. A related point that's easy to get wrong:
+  **provenance (where a fact came from) and confidence (how sure we are) are orthogonal axes**, and
+  both are already representable as properties — `AssertionMode` tracks provenance,
+  `EdgeStatistics.Confidence` tracks confidence. Resist adding a vertex *subclass*
+  (`HypothesisVertex`, `ImaginedVertex`, etc.) that collapses the two: it forces a type migration on
+  promotion and duplicates machinery the property model already provides. A hypothesized,
+  low-confidence, or internally-generated concept is a regular `Vertex` with the relevant properties —
+  never a different kind of vertex. This is the same "the kernel records; it does not judge" principle
+  from Roles vs. `VertexRoles` above, applied to epistemic state.
+  `[verified:src=src/Topos.Hypergraph/AssertionMode.cs]` `[verified:src=src/Topos.Hypergraph/EdgeStatistics.cs]`
 - **Not multi-language by FFI.** Pure C#. The whole point (per the project's history) is eliminating
   a cross-language boundary.
 

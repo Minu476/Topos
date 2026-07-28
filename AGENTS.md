@@ -16,16 +16,16 @@ memory, and provenance.
 > weights.** In category theory, a *topos* is a deep theory of structured contexts — a fitting
 > ambition for a foundational substrate that many domains build on.
 
-**Current status (2026-07-26): M0–M6 implemented and tested; M7 (spectral) deferred by design;
-M8's API-stability scope is done; M9 implemented.** The spec was approved (GPT + Claude passes,
-`docs/reactions/`) before implementation started. Topos is a live `ProjectReference` in
-Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`, now also referencing
-`Topos.Hypergraph.Knowledge`) and has a second real consumer (NexusVerifier's AND-OR proof-search
-chainer) — see `docs/SESSION_HANDOFF.md` for the precise carry-on state and `docs/DECISIONS.md`'s
-three 2026-07-25 entries for what M8 resolved and why it's closed. **M8's other spec items — HIF
-interchange, a docs site, and NuGet-publish readiness — are deliberately deferred**, each gated on
-a condition that hasn't arrived (a forcing consumer, or a decision to go public); they are not
-part of what "M8 done" means here.
+**Current status (2026-07-27): M0–M6 implemented and tested; M7 (spectral) deferred by design;
+M8's API-stability scope is done; M9 implemented; M10 (MCP server) implemented.** The spec was
+approved (GPT + Claude passes, `docs/reactions/`) before implementation started. Topos is a live
+`ProjectReference` in Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`, now also
+referencing `Topos.Hypergraph.Knowledge`) and has a second real consumer (NexusVerifier's AND-OR
+proof-search chainer) — see `docs/SESSION_HANDOFF.md` for the precise carry-on state and
+`docs/DECISIONS.md`'s three 2026-07-25 entries for what M8 resolved and why it's closed. **M8's
+other spec items — HIF interchange, a docs site, and NuGet-publish readiness — are deliberately
+deferred**, each gated on a condition that hasn't arrived (a forcing consumer, or a decision to go
+public); they are not part of what "M8 done" means here.
 
 **M9 is implemented (2026-07-26).** A new `Topos.Hypergraph.Knowledge` package — layer-1
 role-aware directed traversal (`DirectedBfs`/`DirectedShortestPath`/`RoleFilteredMembers` over
@@ -34,6 +34,20 @@ consumers already hand-rolled (ChatMemory, RLB's own `ToposGraphProjection`, Nex
 exit criterion is met: RLB's `ToposGraphProjection` now calls into this package instead of
 maintaining its own copy, and RLB's 346-test suite passes unchanged. See `docs/SPECIFICATION.md`
 §6's M9 row and `docs/DECISIONS.md`'s "M9 IMPLEMENTED" entry for full detail.
+
+**M10 is implemented (2026-07-27).** A new `Topos.Hypergraph.Mcp` package — a Model Context
+Protocol server (Microsoft's official `ModelContextProtocol` C# SDK, stdio transport, stateful
+single-session) exposing the kernel and `Topos.Hypergraph.Knowledge` as 18 agent-callable tools, so
+any MCP-aware agent can create vertices, build n-ary hyperedges, and query traversals with zero C#.
+Nasser approved the proposal (`docs/MCP_SERVER_SPEC.md`) after two corrections surfaced by checking
+rather than trusting it (the SDK's real license is Apache-2.0, not MIT; `~/Projects/FSDE` already
+runs a hand-rolled, non-SDK MCP server — a live counter-precedent worth knowing before assuming the
+official SDK route), then answered all four §5 forks that gate v1 scope explicitly. Dogfooded via
+raw JSON-RPC over the real stdio transport (all 18 tools register with correct schemas; a full
+create-vertex → add-incidence → traversal round trip behaves per the kernel's documented
+semantics). **Not yet dogfooded through a live agent session** — that needs Claude Code restarted
+to pick up the new `topos` entry in this repo's `.mcp.json`. See `docs/SPECIFICATION.md` §6's M10
+row and `docs/DECISIONS.md`'s "M10 APPROVED AND IMPLEMENTED" entry for full detail.
 
 The namespace is `Topos.Hypergraph`, locked for M0–M3 per `docs/DECISIONS.md` §4.1 — the deeper
 "incidence model" reframe stays a reach goal, not adopted.
@@ -182,6 +196,17 @@ across sessions and is authoritative when FSDE is cold.
 ├── benchmarks/
 │   └── Topos.Hypergraph.Benchmarks/  # BenchmarkDotNet suite — see docs/M0_BENCHMARK_RESULTS_*.md
 └── docs/
+    ├── Documentation.md             # USER-FACING: the COMBINED manual — all four user-facing docs in
+    │                                  # one file (concepts + getting-started + API reference + usage
+    │                                  # patterns) with a unified TOC and in-file anchors. The single
+    │                                  # doc to read or hand to a reviewer/GPT. Updated for NuGet (MIT).
+    │                                  # Source for Documentation.{html,pdf} below.
+    ├── build_pdf.py                  # One-command Markdown→PDF builder. Usage:
+    │                                  #   .pdf-venv/bin/python docs/build_pdf.py [input.md [out.pdf]]
+    │                                  # Defaults: docs/Documentation.{md,pdf}. Produces a vector PDF
+    │                                  # (clickable TOC, code blocks that wrap, metadata) + intermediate
+    │                                  # HTML. REBUILD THIS after editing Documentation.md. Requires the
+    │                                  # .pdf-venv/ venv + Playwright (see NUGET_PUBLISH_CHECKLIST §0 for setup).
     ├── CONCEPTS.md                   # USER-FACING: the mental model (4 primitives, 2 invariants,
     │                                  # Roles vs. VertexRoles, layers) — start here for "what is this"
     ├── GETTING_STARTED.md            # USER-FACING: runnable walkthrough kernel→properties→hyperedge→
@@ -208,6 +233,13 @@ across sessions and is authoritative when FSDE is cold.
     │                                  # (resolves finding #3) — no kernel change, consumer guidance
     ├── GLM_DOCUMENTATION_GUIDELINES.md # standing role boundary: GLM-5.2 does documentation only,
     │                                  # never src/ code — read once per session, not refreshed daily
+    ├── NUGET_PUBLISH_CHECKLIST.md     # decision recorded (license = MIT), executable checklist for
+    │                                  # the gated NuGet-publish item; .csproj edits + pack/push steps.
+    │                                  # Closes the "M8 CLOSED" gated item once executed by a code session.
+    ├── MCP_SERVER_SPEC.md             # 🟡 PROPOSED M10: an MCP server exposing the kernel's public API
+    │                                  # as agent-callable tools (built on the official Microsoft MCP C# SDK v1.0).
+    │                                  # Frames the forcing-function question + 5 open design forks; NOT decided.
+    │                                  # Nasser's go/no-go; if yes, a code session executes §6.
     └── reactions/                    # verbatim GPT/Claude review rounds
 ```
 
