@@ -11,8 +11,8 @@ this handoff.
 
 ## 1. What Topos is (read this first if context is lost)
 
-**Topos** (`/Users/nassertowfigh/Projects/Topos`, pushed to `github.com/Minu476/Topos`,
-private) is a standalone, domain-agnostic **typed-property hypergraph library for C#**,
+**Topos** (pushed to `github.com/Minu476/Topos`, public) is a standalone, domain-agnostic
+**typed-property hypergraph library for C#**,
 purpose-fit for AI / agent memory. The name (*topos* = Greek for "place/location", root of
 *topology*) invokes the central thesis: knowledge stored as topological graph structure rather
 than neural-network weights.
@@ -394,8 +394,8 @@ methodology that should gate any new attempt, per the project's own stated lesso
   .mcp.json + 5 doc-file changes), the entire 2026-07-26/27 documentation push (4 new docs +
   Documentation.md + build_pdf.py + NUGET_PUBLISH_CHECKLIST + the regenerated PDF), and the
   NexusVerifier cross-project docs (separate repo). **Two things to do before committing Topos:**
-  (1) scrub the `/Users/nassertowfigh/Projects/Topos/...` absolute path in `.mcp.json`'s new
-  `topos` entry (the same class of path-leak flagged in the earlier security pre-flight); (2)
+  (1) scrub the local absolute path in `.mcp.json`'s new `topos` entry (the same class of
+  path-leak flagged in the earlier security pre-flight); (2)
   decide what to do with `.zcode/` — it's not in `.gitignore` and shouldn't be committed.
   **NexusVerifier's working tree also has unrelated untracked items** (`phase4_results/`,
   `ToDoList/`, `fsde-model-catalog-fix/`) — don't sweep those into a doc commit; stage

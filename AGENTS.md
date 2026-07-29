@@ -134,14 +134,14 @@ Both halves of this are done, not just planned:
 **On launch, call these in order before doing anything else** (when the FSDE MCP tools are
 loaded; if not, use the `fsde` CLI as a fallback):
 
-1. **`fsde_start_session`** with `projectPath=/Users/nassertowfigh/Projects/Topos`. Returns
+1. **`fsde_start_session`** with `projectPath=<absolute path to this repo>`. Returns
    the session briefing.
 2. **`fsde_read_directives`** (recipient=agent, status=open) — pick up directives.
 3. **`fsde_get_todos`** — the live todo list. The markdown files in `docs/` are the
    human-readable source of truth; Neo4j catches up via re-ingestion.
 
 If FSDE MCP tools are NOT loaded in the session, the `fsde` CLI works:
-`fsde get-context --dir /Users/nassertowfigh/Projects/Topos`.
+`fsde get-context --dir <absolute path to this repo>`.
 
 **Either way, always read `docs/SESSION_HANDOFF.md` first** — it carries the carry-on state
 across sessions and is authoritative when FSDE is cold.
