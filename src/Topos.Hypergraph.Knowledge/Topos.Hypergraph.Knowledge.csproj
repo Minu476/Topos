@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -22,6 +23,17 @@
     <Authors>Nasser Towfigh</Authors>
     <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
     <Version>0.1.0-m9</Version>
+    <!-- License: SPDX expression. NuGet.org renders this; no file-bundling needed. -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <!-- Source repo: lets consumers trace the package back to this code. -->
+    <RepositoryUrl>https://github.com/Minu476/Topos.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- Project page on nuget.org's "Project website" link. -->
+    <PackageProjectUrl>https://github.com/Minu476/Topos</PackageProjectUrl>
+    <!-- Discoverability: these show up in nuget.org search and package listings. -->
+    <PackageTags>hypergraph;ai-memory;agent-memory;llm;knowledge-graph;csharp;graph;incidence;n-ary</PackageTags>
+    <!-- Optional but recommended: render the repo README on the nuget.org package page. -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
 </Project>

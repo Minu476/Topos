@@ -24,6 +24,9 @@ artifacts/
 **/[Pp]ackages/*
 !**/[Pp]ackages/build/
 
+# NuGet package output (local build artifact; never commit)
+nupkgs/
+
 ## Visual Studio / Rider / VS Code (keep editor-agnostic; individuals can override)
 .vs/
 .idea/

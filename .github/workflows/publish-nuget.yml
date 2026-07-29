@@ -1,0 +1,53 @@
+name: Publish NuGet packages
+
+# Manual only -- a NuGet push is permanent (a version can be unlisted but never
+# deleted or reused), so this never runs on a plain push/tag. Trigger it by hand
+# from the Actions tab when you're ready to publish.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "publish" to confirm you want to push packages to nuget.org'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    if: github.event.inputs.confirm == 'publish'
+    runs-on: ubuntu-latest
+    # Configure this environment in repo Settings > Environments with a required
+    # reviewer so every publish needs a manual approval click, even after dispatch.
+    environment: nuget-publish
+    permissions:
+      id-token: write # enable GitHub OIDC token issuance for NuGet Trusted Publishing
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Topos.sln
+
+      - name: Build
+        run: dotnet build Topos.sln -c Release --no-restore
+
+      - name: Pack
+        run: |
+          dotnet pack src/Topos.Hypergraph/Topos.Hypergraph.csproj -c Release -o ./nupkgs --no-build --include-symbols
+          dotnet pack src/Topos.Hypergraph.Persistence/Topos.Hypergraph.Persistence.csproj -c Release -o ./nupkgs --no-build --include-symbols
+          dotnet pack src/Topos.Hypergraph.Knowledge/Topos.Hypergraph.Knowledge.csproj -c Release -o ./nupkgs --no-build --include-symbols
+
+      - name: NuGet login (OIDC -> short-lived API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push packages
+        run: dotnet nuget push "./nupkgs/*.nupkg" --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
