@@ -42,8 +42,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_INPUT = REPO_ROOT / "docs" / "Documentation.md"
 VENV_PYTHON = REPO_ROOT / ".pdf-venv" / "bin" / "python"
 PDF_SKILL_DIR = Path(
-    "/Users/nassertowfigh/.zcode/cli/plugins/cache/zcode-plugins-official/"
-    "document-skills/0.1.0/skills/pdf"
+    os.environ.get("PDF_SKILL_DIR")
+    or Path.home() / ".zcode/cli/plugins/cache/zcode-plugins-official"
+    "/document-skills/0.1.0/skills/pdf"
 )
 HTML2PDF_JS = PDF_SKILL_DIR / "scripts" / "html2pdf-next.js"
 
