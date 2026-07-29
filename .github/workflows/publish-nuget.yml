@@ -6,16 +6,24 @@ name: Publish NuGet packages
 on:
   workflow_dispatch:
     inputs:
-      confirm:
-        description: 'Type "publish" to confirm you want to push packages to nuget.org'
+      mode:
+        description: 'dry-run: build+pack+inspect only, never contacts nuget.org. publish: real push.'
         required: true
+        type: choice
+        options:
+          - dry-run
+          - publish
+        default: dry-run
+      confirm:
+        description: 'Only checked when mode=publish: type "publish" to confirm the push to nuget.org'
+        required: false
 
 permissions:
   contents: read
 
 jobs:
   build-and-publish:
-    if: github.event.inputs.confirm == 'publish'
+    if: github.event.inputs.mode == 'dry-run' || (github.event.inputs.mode == 'publish' && github.event.inputs.confirm == 'publish')
     runs-on: ubuntu-latest
     # Configure this environment in repo Settings > Environments with a required
     # reviewer so every publish needs a manual approval click, even after dispatch.
@@ -43,11 +51,26 @@ jobs:
           dotnet pack src/Topos.Hypergraph.Persistence/Topos.Hypergraph.Persistence.csproj -c Release -o ./nupkgs --no-build --include-symbols
           dotnet pack src/Topos.Hypergraph.Knowledge/Topos.Hypergraph.Knowledge.csproj -c Release -o ./nupkgs --no-build --include-symbols
 
+      - name: Inspect packed metadata (license, repo URL, tags, readme)
+        run: |
+          for nupkg in ./nupkgs/*.nupkg; do
+            case "$nupkg" in *.symbols.nupkg) continue ;; esac
+            echo "=== $nupkg ==="
+            name=$(basename "$nupkg" .nupkg)
+            nuspec="${name%.*}.nuspec" # strip trailing version-ish segment isn't reliable; just grep any *.nuspec inside
+            unzip -p "$nupkg" "*.nuspec" | grep -E "<id>|<version>|<license|<repository|<projectUrl>|<tags>|<readme>"
+            echo "--- files ---"
+            unzip -l "$nupkg" | grep -i readme || echo "(no README packed!)"
+            echo
+          done
+
       - name: NuGet login (OIDC -> short-lived API key)
+        if: github.event.inputs.mode == 'publish'
         uses: NuGet/login@v1
         id: login
         with:
           user: ${{ secrets.NUGET_USER }}
 
       - name: Push packages
+        if: github.event.inputs.mode == 'publish'
         run: dotnet nuget push "./nupkgs/*.nupkg" --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
