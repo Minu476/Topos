@@ -14,8 +14,15 @@ first program. A linear, copy-pasteable walkthrough from "create a kernel" to "s
 
 ## 1. Add Topos to your project
 
-Topos targets **.NET 10** and is **not yet on NuGet** — you reference it from source via a
-`ProjectReference`. `[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]` `[verified:docs=docs/DECISIONS.md — "M8 CLOSED" entry: NuGet-publish readiness is separately gated]`
+Topos targets **.NET 10**. `Topos.Hypergraph`, `Topos.Hypergraph.Persistence`, and
+`Topos.Hypergraph.Knowledge` are published on NuGet under MIT — add whichever ones you need:
+
+```bash
+dotnet add package Topos.Hypergraph --prerelease
+```
+
+To track `main` instead of a released version, reference from source via a `ProjectReference`.
+`[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]`
 
 ```xml
 <!-- in your consuming .csproj -->

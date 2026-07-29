@@ -655,6 +655,47 @@ In priority order:
 
 ---
 
+### 2026-07-29 — NuGet PUBLISHED: `Topos.Hypergraph`, `.Persistence`, `.Knowledge` live under MIT
+
+- **Decider:** Nasser, executed by Sonnet 5 in the same session.
+- **Question:** `docs/NUGET_PUBLISH_CHECKLIST.md`'s gated item from "M8 CLOSED" — license file,
+  package metadata, and actually publishing — waited on Nasser deciding a license and a
+  public-release timing.
+- **Decision:** License **MIT** (already recorded in the checklist). Publish via **GitHub Actions
+  + NuGet Trusted Publishing (OIDC)** rather than a long-lived API key, so no NuGet credential is
+  ever stored or typed. The repo was also flipped from private to public the same session — partly
+  because the package's `RepositoryUrl`/`PackageProjectUrl` would otherwise 404 for consumers, and
+  partly because GitHub's required-reviewer environment-protection rule (the approval gate on the
+  publish workflow) isn't available on a private repo under GitHub's free plan.
+- **What shipped:**
+  - `LICENSE` (MIT) at repo root; `PackageLicenseExpression`, `RepositoryUrl`, `RepositoryType`,
+    `PackageProjectUrl`, `PackageTags`, `PackageReadmeFile` added to all three publishable csprojs
+    (`Topos.Hypergraph`, `.Persistence`, `.Knowledge` — not `Topos.Hypergraph.Mcp`, which stays
+    source-only for now).
+  - `.github/workflows/publish-nuget.yml` — manual-only (`workflow_dispatch`), with a typed
+    `confirm` input and a `dry-run` mode (build + pack + inspect metadata, never contacts
+    nuget.org) alongside `publish`. Uses `NuGet/login@v1` for the OIDC token exchange; the
+    `NUGET_USER` repo secret holds only the nuget.org username, never a key.
+  - A `nuget-publish` GitHub Actions environment gates the job.
+  - Published: `Topos.Hypergraph` `0.1.0-m8`, `Topos.Hypergraph.Persistence` `0.1.0-m8`,
+    `Topos.Hypergraph.Knowledge` `0.1.0-m9` — verified live by downloading each `.nupkg` directly
+    from `api.nuget.org` and inspecting its `.nuspec` and `lib/` contents (not just trusting the
+    push-step log), after a `.symbols.nupkg`-vs-real-package push-ordering anomaly on the Knowledge
+    package raised (and then ruled out) a concern about which content actually landed.
+  - `README.md` and `docs/GETTING_STARTED.md` flipped from "not yet on NuGet" to the real
+    `dotnet add package Topos.Hypergraph --prerelease` install line, `ProjectReference` kept as the
+    documented way to track `main`.
+- **Rationale:** Trusted Publishing was chosen over a classic API key specifically because a prior
+  incident in this repo's own history (`docs/GDS_ORACLE_SETUP.md` — a Neo4j password typed into a
+  chat session, rotated on principle) made "never type a credential into an agent-observed channel"
+  a hard constraint for this session, and OIDC-based publishing satisfies that natively rather than
+  requiring discipline to maintain it.
+- **What it changes:** `LICENSE` (new), the three csprojs (metadata only, no code changes),
+  `.github/workflows/publish-nuget.yml` (new), `.gitignore` (`nupkgs/` added), repo visibility
+  (private → public), `README.md` / `docs/GETTING_STARTED.md` (install instructions updated).
+
+---
+
 ## 7. Decision log format for future entries
 
 When Nasser or a reviewer makes a decision that closes an open item, append it to §6 above as:

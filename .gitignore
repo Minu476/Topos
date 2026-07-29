@@ -36,6 +36,11 @@ nupkgs/
 .DS_Store
 Thumbs.db
 
+## Personal local MCP wiring (absolute paths + other-repo references; not portable).
+## Public template lives at samples/Topos.Samples.McpAgent/.mcp.json.example.
+/.mcp.json
+.agents/mcp_config.json
+
 ## BenchmarkDotNet results (anticipated for M0 measured-benchmark gate)
 BenchmarkDotNet.Artifacts/
 *-report.html

@@ -24,9 +24,17 @@ provenance.
 file with the mental model, a runnable walkthrough, the full API reference, and usage patterns. That's
 the single doc to read or hand to a reviewer.
 
-Topos targets **.NET 10**. NuGet packages (`Topos.Hypergraph`, `Topos.Hypergraph.Persistence`,
-`Topos.Hypergraph.Knowledge`, `Topos.Hypergraph.Mcp`) are being prepped for first publish under MIT
-— until they're live, reference from source via a `ProjectReference`: `[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]`
+Topos targets **.NET 10**. `Topos.Hypergraph`, `Topos.Hypergraph.Persistence`, and
+`Topos.Hypergraph.Knowledge` are published on NuGet under MIT:
+
+```bash
+dotnet add package Topos.Hypergraph --prerelease
+# add Topos.Hypergraph.Knowledge for directed/role-aware traversal
+# add Topos.Hypergraph.Persistence for save/load
+```
+
+To track `main` instead of a released version, reference from source via a `ProjectReference`:
+`[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]`
 
 ```xml
 <ItemGroup>
@@ -36,15 +44,9 @@ Topos targets **.NET 10**. NuGet packages (`Topos.Hypergraph`, `Topos.Hypergraph
 </ItemGroup>
 ```
 
-To let an MCP-aware agent (Claude Code, Cursor, etc.) call the kernel directly without writing any
-C#, run `Topos.Hypergraph.Mcp` as a subprocess instead — see `samples/Topos.Samples.McpAgent/` for
-the `.mcp.json` wiring.
-
-Once published:
-
-```bash
-dotnet add package Topos.Hypergraph --prerelease
-```
+`Topos.Hypergraph.Mcp` isn't on NuGet yet. To let an MCP-aware agent (Claude Code, Cursor, etc.)
+call the kernel directly without writing any C#, run it as a subprocess from source instead — see
+`samples/Topos.Samples.McpAgent/` for the `.mcp.json` wiring.
 
 Build a kernel, model one n-ary relationship (one utterance mentioning three entities = **one
 hyperedge**, not three binary edges), and query it back:
