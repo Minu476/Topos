@@ -7,15 +7,19 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'dry-run: build+pack+inspect only, never contacts nuget.org. publish: real push.'
+        description: 'dry-run: build+pack+inspect only, never contacts nuget.org. publish: real push. unlist: hide versions (reversible).'
         required: true
         type: choice
         options:
           - dry-run
           - publish
+          - unlist
         default: dry-run
       confirm:
-        description: 'Only checked when mode=publish: type "publish" to confirm the push to nuget.org'
+        description: 'mode=publish: type "publish". mode=unlist: type "unlist". Ignored for dry-run.'
+        required: false
+      unlist_spec:
+        description: 'Only used when mode=unlist. Space-separated Id:Version pairs, e.g. "Topos.Hypergraph:0.1.0-m8 Topos.Hypergraph:0.1.0-m11". No default — nothing is unlisted unless named explicitly.'
         required: false
 
 permissions:
@@ -23,7 +27,10 @@ permissions:
 
 jobs:
   build-and-publish:
-    if: github.event.inputs.mode == 'dry-run' || (github.event.inputs.mode == 'publish' && github.event.inputs.confirm == 'publish')
+    if: >-
+      github.event.inputs.mode == 'dry-run'
+      || (github.event.inputs.mode == 'publish' && github.event.inputs.confirm == 'publish')
+      || (github.event.inputs.mode == 'unlist' && github.event.inputs.confirm == 'unlist' && github.event.inputs.unlist_spec != '')
     runs-on: ubuntu-latest
     # Configure this environment in repo Settings > Environments with a required
     # reviewer so every publish needs a manual approval click, even after dispatch.
@@ -40,18 +47,22 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
+        if: github.event.inputs.mode != 'unlist'
         run: dotnet restore Topos.sln
 
       - name: Build
+        if: github.event.inputs.mode != 'unlist'
         run: dotnet build Topos.sln -c Release --no-restore
 
       - name: Pack
+        if: github.event.inputs.mode != 'unlist'
         run: |
           dotnet pack src/Topos.Hypergraph/Topos.Hypergraph.csproj -c Release -o ./nupkgs --no-build --include-symbols
           dotnet pack src/Topos.Hypergraph.Persistence/Topos.Hypergraph.Persistence.csproj -c Release -o ./nupkgs --no-build --include-symbols
           dotnet pack src/Topos.Hypergraph.Knowledge/Topos.Hypergraph.Knowledge.csproj -c Release -o ./nupkgs --no-build --include-symbols
 
       - name: Inspect packed metadata (license, repo URL, tags, readme)
+        if: github.event.inputs.mode != 'unlist'
         run: |
           for nupkg in ./nupkgs/*.nupkg; do
             case "$nupkg" in *.symbols.nupkg) continue ;; esac
@@ -65,7 +76,7 @@ jobs:
           done
 
       - name: NuGet login (OIDC -> short-lived API key)
-        if: github.event.inputs.mode == 'publish'
+        if: github.event.inputs.mode == 'publish' || github.event.inputs.mode == 'unlist'
         uses: NuGet/login@v1
         id: login
         with:
@@ -74,3 +85,35 @@ jobs:
       - name: Push packages
         if: github.event.inputs.mode == 'publish'
         run: dotnet nuget push "./nupkgs/*.nupkg" --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      # Unlist = hide from search and from `--prerelease` resolution. On nuget.org
+      # `dotnet nuget delete` performs a SOFT delete (unlist); the version is NOT removed
+      # and can be relisted from the web UI. Versions are still restorable by exact pin, so
+      # existing consumers who pinned one do not break.
+      # Guard: refuses any version that is not a 0.1.0-* prerelease, so a typo cannot hide a
+      # current release. Widen deliberately if a future cleanup needs it.
+      - name: Unlist versions
+        if: github.event.inputs.mode == 'unlist'
+        env:
+          UNLIST_SPEC: ${{ github.event.inputs.unlist_spec }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          echo "Requested: $UNLIST_SPEC"
+          for pair in $UNLIST_SPEC; do
+            id="${pair%%:*}"
+            ver="${pair##*:}"
+            if [ -z "$id" ] || [ -z "$ver" ] || [ "$id" = "$ver" ]; then
+              echo "::error::malformed Id:Version pair '$pair'"; exit 1
+            fi
+            case "$ver" in
+              0.1.0-*) ;;
+              *) echo "::error::refusing to unlist '$id' '$ver' — guard allows only 0.1.0-* prereleases"; exit 1 ;;
+            esac
+            echo "--- unlisting $id $ver ---"
+            dotnet nuget delete "$id" "$ver" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key "$NUGET_API_KEY" \
+              --non-interactive
+          done
+          echo "Unlisted $(echo "$UNLIST_SPEC" | wc -w) version(s)."
