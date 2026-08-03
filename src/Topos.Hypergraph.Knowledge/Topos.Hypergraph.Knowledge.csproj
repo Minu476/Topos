@@ -15,14 +15,15 @@
     <Description>
       M9 packaging split (spec §6 M9, docs/DECISIONS.md 2026-07-25 "M9 SCOPED"): layer-1
       role-aware directed traversal over Topos.Hypergraph's IHypergraphQuery — DirectedBfs,
-      DirectedShortestPath, RoleFilteredMembers, plus the docs/ROLE_CONVENTIONS.md
+      DirectedShortestPath, RoleFilteredMembers, DirectedScc (M11 phase 1: strongly-connected
+      components over the role-aware directed adjacency), plus the docs/ROLE_CONVENTIONS.md
       byte-backed-enum pattern as real code (AddIncidence&lt;TRole&gt;). No kernel changes; pure
       consumer of the existing public surface. Generalizes a pattern three independent real
       consumers (Rich-Learning-Base, NexusVerifier, Topos.Samples.ChatMemory) already hand-rolled.
     </Description>
     <Authors>Nasser Towfigh</Authors>
     <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
-    <Version>0.1.0-m9</Version>
+    <Version>0.1.0-m11</Version>
     <!-- License: SPDX expression. NuGet.org renders this; no file-bundling needed. -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <!-- Source repo: lets consumers trace the package back to this code. -->

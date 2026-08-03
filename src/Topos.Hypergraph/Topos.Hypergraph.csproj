@@ -20,12 +20,13 @@
       Embedded, in-process, typed-property hypergraph kernel for C#, purpose-fit for
       long-lived adaptive symbolic memory workloads (AI/agent memory). Four-primitive storage
       contract (Handle/Vertex/Incidence/PropertyKey&lt;T&gt;), ~40 default-implemented traversal
-      and analytics algorithms (BFS/DFS/shortest-path/cycle/SCC/s-walk/community detection),
-      reification, composable views, embeddings, and learnable edges (M0-M6).
+      and analytics algorithms (BFS/DFS/shortest-path/cycle/SCC/s-walk/community detection/
+      centrality/PageRank), reification, composable views, embeddings, and learnable edges
+      (M0-M6, M11 phase 1).
     </Description>
     <Authors>Nasser Towfigh</Authors>
     <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
-    <Version>0.1.0-m8</Version>
+    <Version>0.1.0-m11</Version>
     <!-- License: SPDX expression. NuGet.org renders this; no file-bundling needed. -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <!-- Source repo: lets consumers trace the package back to this code. -->
