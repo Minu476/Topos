@@ -5,9 +5,11 @@
 > (`SPECIFICATION.md`, `DECISIONS.md`) lives separately — this is the user manual.
 >
 > **Status:** M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done ·
-> M9 implemented. 179 tests pass. License: **MIT** (decided 2026-07-26). NuGet packages
-> (`Topos.Hypergraph`, `Topos.Hypergraph.Persistence`, `Topos.Hypergraph.Knowledge`) are being
-> prepped for first publish — see [§1 Installation](#1-installation) for the current state.
+> M9 implemented · M10 (MCP server) implemented · M11 phase 1 implemented (Centrality/PageRank/
+> Directed SCC, GDS-verified against a live instance; phase 2 — s-connected-components/s-line-graph/
+> s-diameter — not yet scheduled). 233 tests pass. License: **MIT** (decided 2026-07-26). NuGet
+> packages (`Topos.Hypergraph`, `Topos.Hypergraph.Persistence`, `Topos.Hypergraph.Knowledge`) are
+> published — see [§1 Installation](#1-installation) for the current state.
 
 ---
 
@@ -50,6 +52,7 @@
   - [5.6 Learnable edges](#56-learnable-edges)
   - [5.7 Persistence (save / reload)](#57-persistence-save-reload)
   - [5.8 Directed (role-aware) traversal](#58-directed-role-aware-traversal)
+  - [5.9 Ranking and structural analysis (centrality, PageRank, directed SCC)](#59-ranking-and-structural-analysis-centrality-pagerank-directed-scc)
 - [6. MCP server — agent tool-calling](#6-mcp-server-agent-tool-calling)
   - [6.1 What it is](#61-what-it-is)
   - [6.2 Wire it into an agent](#62-wire-it-into-an-agent)
@@ -1041,6 +1044,48 @@ excluded from the internal-edges numerator but grouped into a synthetic communit
 degree-sum-of-squares penalty — so omitting vertices can only push Q down, never up. Pass a partition
 covering every vertex for a meaningful score. `[verified:src=src/Topos.Hypergraph/Modularity.cs:15-28]`
 
+#### `Centrality`
+
+Standard centrality measures (M11 phase 1). GDS-verified (`gds.degree`/`gds.closeness`/`gds.betweenness`).
+`[verified:src=src/Topos.Hypergraph/Centrality.cs:15-132]`
+
+```csharp
+public static class Centrality
+{
+    public static IReadOnlyDictionary<Handle, int> Degree(IHypergraphQuery graph);
+    public static IReadOnlyDictionary<Handle, double> Closeness(IHypergraphQuery graph);
+    public static IReadOnlyDictionary<Handle, double> Betweenness(IHypergraphQuery graph);
+}
+```
+
+Shares `Modularity`/`TriangleCount`/`LabelPropagation`'s bipartite (clique-expansion) adjacency, not
+M1's member-only `GetBfs` adjacency. **`Degree`** — size of each vertex's distinct neighbor set.
+**`Closeness`** — `k / Σ(distance to each of the k reachable others)`, GDS's actual default formula
+(`useWassermanFaustFormula = false`) — each vertex scores against only its own reachable set, so
+disconnected components each get an internally-consistent score. **`Betweenness`** — Brandes'
+algorithm (one BFS per source), halved at the end (the standard undirected-graph correction).
+All three now confirmed exact-value parity against a live Neo4j+GDS instance (2026-08-03).
+
+#### `PageRank`
+
+Standard PageRank (M11 phase 1). GDS-verified (`gds.pageRank`).
+`[verified:src=src/Topos.Hypergraph/PageRank.cs:13-56]`
+
+```csharp
+public static class PageRank
+{
+    public static IReadOnlyDictionary<Handle, double> Compute(
+        IHypergraphQuery graph, double damping = 0.85, int maxIterations = 100, double tolerance = 1e-6);
+}
+```
+
+Power iteration over the same adjacency `Centrality` uses — symmetric co-membership, kernel-level.
+Uniform dangling-mass redistribution; damping `0.85` matches `gds.pageRank`'s own default. Converges
+to a distribution summing to `1.0` across every vertex. **Note:** `gds.pageRank`'s own default output
+is *not* normalized to sum to 1 (its base term is `(1-d)`, not `(1-d)/N`) — comparing against GDS
+means L1-normalizing GDS's raw scores first; this is a genuine convention difference, not a bug in
+either implementation.
+
 ### 4.6 Persistence — `Topos.Hypergraph.Persistence`
 
 Save/load a kernel's topology + caller-specified property columns to/from a `Stream`. Spec §6 M4.
@@ -1151,13 +1196,22 @@ public static class DirectedTraversal
 
     // One-hop: members of vertex's hyperedges holding the given role.
     public static IReadOnlyList<Handle> RoleFilteredMembers(this IHypergraphQuery graph, Handle vertex, byte role);
+
+    // M11 phase 1: strongly-connected components over the fromRole→toRole directed adjacency.
+    // Every vertex gets a component, including singletons for vertices that never hold fromRole/toRole.
+    public static IReadOnlyList<IReadOnlyList<Handle>> DirectedScc(this IHypergraphQuery graph, byte fromRole, byte toRole);
 }
 ```
 
 This is where "the kernel does not judge" gets its judgment: given a directed reading of hyperedge
-roles, walk only along that direction. All three are extension methods on `IHypergraphQuery`, so they
+roles, walk only along that direction. All four are extension methods on `IHypergraphQuery`, so they
 work over a kernel, a `FilteredView`, a `UnionView` — any source.
 `[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:3-16]`
+
+`DirectedScc` is the directed counterpart to the kernel's `GetConnectedComponents` (WCC-equivalent) —
+iterative Tarjan, GDS-verifiable via `gds.scc` over a role-projected directed graph. It's the tested
+replacement for the class of hand-rolled directed-cycle guard NexusVerifier's finding #4 describes
+(don't reach for `HasCycle` here — it's role-blind and trivially `true` on any real n-ary hypergraph).
 
 #### `RoleExtensions`
 
@@ -1178,6 +1232,9 @@ public static class RoleExtensions
         where TRole : unmanaged, Enum;
 
     public static IReadOnlyList<Handle> RoleFilteredMembers<TRole>(this IHypergraphQuery graph, Handle vertex, TRole role)
+        where TRole : unmanaged, Enum;
+
+    public static IReadOnlyList<IReadOnlyList<Handle>> DirectedScc<TRole>(this IHypergraphQuery graph, TRole fromRole, TRole toRole)
         where TRole : unmanaged, Enum;
 }
 ```
@@ -1574,6 +1631,59 @@ even though they share the same hyperedges.
 > layer, `HasCycle()` returns `true` almost always on any real n-ary hypergraph (three co-members are
 > trivially "cyclic"). If you need directed cycle detection, walk with `DirectedBfs` and guard the
 > current path yourself. `[verified:src=src/Topos.Hypergraph/IHypergraphQuery.cs:277-306]`
+
+### 5.9 Ranking and structural analysis (centrality, PageRank, directed SCC)
+
+**When to use:** once you have a graph of any size, three questions come up constantly — *which
+vertex matters most* (centrality/PageRank), and *does this directed relationship contain a cycle
+that shouldn't be there* (directed SCC). M11 phase 1 added all three as GDS-verified algorithms.
+
+**Centrality:**
+
+```csharp
+using Topos.Hypergraph;
+
+IReadOnlyDictionary<Handle, int>    degree      = Centrality.Degree(kernel);
+IReadOnlyDictionary<Handle, double> closeness   = Centrality.Closeness(kernel);
+IReadOnlyDictionary<Handle, double> betweenness = Centrality.Betweenness(kernel);
+
+var mostConnected = degree.OrderByDescending(kv => kv.Value).Take(5);
+```
+
+**PageRank:**
+
+```csharp
+IReadOnlyDictionary<Handle, double> rank = PageRank.Compute(kernel, damping: 0.85);
+var mostImportant = rank.OrderByDescending(kv => kv.Value).First();
+```
+
+Both share the same clique-expansion adjacency `Modularity`/`TriangleCount`/`LabelPropagation` use
+(not `GetBfs`'s member-only hop convention), and both are GDS-verified — see §4.5.
+
+**Directed SCC — catching cycles that shouldn't exist:**
+
+```csharp
+using Topos.Hypergraph.Knowledge;
+
+public enum DerivationRole : byte { Derived = 0, Source = 1 }
+
+// Build a directed derivation edge per (derived fact, source fact) pair.
+Handle derivation = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(derivation, factA, DerivationRole.Derived, ordinal: 0);
+kernel.AddIncidence(derivation, factB, DerivationRole.Source,  ordinal: 1);
+
+IReadOnlyList<IReadOnlyList<Handle>> components =
+    kernel.DirectedScc(DerivationRole.Derived, DerivationRole.Source);
+
+// Every non-cyclic fact lands in its own singleton component — filter those out to isolate real cycles.
+var cycles = components.Where(c => c.Count > 1).ToList();
+```
+
+An agent deriving fact A from B, B from C, and C from A is circular reasoning, not three independent
+facts — `DirectedScc` (iterative Tarjan, GDS-verifiable via `gds.scc` over a role-projected directed
+graph) is the tested, generic way to catch it. Worked example (all three):
+`samples/Topos.Samples.ChatMemory` — `MostConnectedEntities`, `RankByImportance`,
+`RecordDerivation`/`DetectCircularDerivations`.
 
 ---
 

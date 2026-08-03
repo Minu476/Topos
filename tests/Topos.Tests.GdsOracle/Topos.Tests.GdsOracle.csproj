@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+    <ProjectReference Include="..\..\src\Topos.Hypergraph.Knowledge\Topos.Hypergraph.Knowledge.csproj" />
   </ItemGroup>
 
 </Project>

@@ -493,6 +493,66 @@ excluded from the internal-edges numerator but grouped into a synthetic communit
 degree-sum-of-squares penalty — so omitting vertices can only push Q down, never up. Pass a partition
 covering every vertex for a meaningful score. `[verified:src=src/Topos.Hypergraph/Modularity.cs:15-28]`
 
+### `Centrality`
+
+Standard centrality measures (M11 phase 1: `docs/ALGORITHM_SPEC.md` §5.5, `docs/DECISIONS.md`'s "M11
+PHASE 1 APPROVED AND IMPLEMENTED" entry). GDS-verified (`gds.degree`/`gds.closeness`/`gds.betweenness`).
+`[verified:src=src/Topos.Hypergraph/Centrality.cs:15-132]`
+
+```csharp
+public static class Centrality
+{
+    public static IReadOnlyDictionary<Handle, int> Degree(IHypergraphQuery graph);
+    public static IReadOnlyDictionary<Handle, double> Closeness(IHypergraphQuery graph);
+    public static IReadOnlyDictionary<Handle, double> Betweenness(IHypergraphQuery graph);
+}
+```
+
+Deliberately shares `Modularity`/`TriangleCount`/`LabelPropagation`'s `BipartiteAdjacency` (the
+co-membership-as-clique projection), **not** M1's `GetBfs`/`GetShortestPathLength` member-only
+adjacency — this is what lets Centrality reuse the existing GDS oracle projection
+(`CliqueExpansionProjectionEngine`) with zero new machinery, at the cost of a documented deviation
+from the spec's literal phrasing (see the decision log for the full rationale).
+`[verified:src=src/Topos.Hypergraph/Centrality.cs:4-14]`
+
+- **`Degree`** — size of each vertex's distinct neighbor set. Matches `gds.degree.stream` over an
+  `UNDIRECTED` projection (GDS's `MERGE`-based relationship creation already collapses duplicate
+  pairs, so a distinct count is the fair comparison).
+- **`Closeness`** — `k / Σ(distance to each of the k reachable others)`, `0.0` if nothing is
+  reachable. This is GDS's actual default formula (`useWassermanFaustFormula = false`): each vertex
+  is scored against only its own reachable set, so disconnected components each get an
+  internally-consistent score rather than one deflated by unreachable vertices elsewhere in the
+  graph. Reduces to the classic Sabidussi `(n-1)/Σdistance` when every vertex reaches every other.
+- **`Betweenness`** — Brandes' algorithm (one BFS per source, `O(V·(V+E))`), halved at the end (the
+  standard undirected-graph correction — Brandes' dependency accumulation discovers every shortest
+  path twice).
+
+Worked example: `samples/Topos.Samples.ChatMemory.MostConnectedEntities` ranks named entities by
+`Degree` over a conversation's mention topology. `[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs]`
+
+### `PageRank`
+
+Standard PageRank (M11 phase 1: `docs/ALGORITHM_SPEC.md` §5.6). GDS-verified (`gds.pageRank`).
+`[verified:src=src/Topos.Hypergraph/PageRank.cs:13-56]`
+
+```csharp
+public static class PageRank
+{
+    public static IReadOnlyDictionary<Handle, double> Compute(
+        IHypergraphQuery graph, double damping = 0.85, int maxIterations = 100, double tolerance = 1e-6);
+}
+```
+
+Power iteration over the same `BipartiteAdjacency` `Centrality` uses — symmetric co-membership,
+kernel-level (spec §6.3's own recommendation; a directed variant would belong in
+`Topos.Hypergraph.Knowledge` if a consumer needs one). Uniform dangling-mass redistribution; damping
+`0.85` matches `gds.pageRank`'s own default. Converges to a distribution summing to `1.0` across
+every vertex regardless of damping or dangling mass; an empty graph returns an empty result rather
+than dividing by zero.
+
+Worked example: `samples/Topos.Samples.ChatMemory.RankByImportance`.
+`[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs]`
+
 ---
 
 ## Persistence — `Topos.Hypergraph.Persistence`
@@ -606,13 +666,29 @@ public static class DirectedTraversal
 
     // One-hop: members of vertex's hyperedges holding the given role.
     public static IReadOnlyList<Handle> RoleFilteredMembers(this IHypergraphQuery graph, Handle vertex, byte role);
+
+    // M11 phase 1: strongly-connected components over the fromRole→toRole directed adjacency
+    // DirectedBfs walks. Every vertex gets a component, including singletons for vertices that
+    // never hold fromRole/toRole anywhere — a component's grouping is the contract, not its
+    // position in the returned list or the order components are emitted in.
+    public static IReadOnlyList<IReadOnlyList<Handle>> DirectedScc(this IHypergraphQuery graph, byte fromRole, byte toRole);
 }
 ```
 
 This is where "the kernel does not judge" gets its judgment: given a directed reading of hyperedge
-roles (e.g. an Anchor firing toward a Target), walk only along that direction. All three are
+roles (e.g. an Anchor firing toward a Target), walk only along that direction. All four are
 extension methods on `IHypergraphQuery`, so they work over a kernel, a `FilteredView`, a `UnionView` —
 any source. `[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:3-16]`
+
+`DirectedScc` is the directed counterpart to the kernel's `GetConnectedComponents` (WCC-equivalent);
+the kernel deliberately doesn't offer it directly since direction needs role-awareness (spec §4.1).
+Iterative Tarjan (explicit work-stack, not recursive) — same discipline as the kernel's `GetDfs`.
+GDS-verifiable via `gds.scc` over a role-projected directed graph (project `fromRole`→`toRole` legs
+as directed binary edges; compare which vertices share a component, not the raw community IDs,
+which are arbitrary labels). `docs/DECISIONS.md`'s "M11 PHASE 1 APPROVED AND IMPLEMENTED" entry has
+the full build record; `samples/Topos.Samples.ChatMemory.DetectCircularDerivations` is a worked
+example (catching circular fact derivation via the same primitive NexusVerifier's finding #4
+hand-rolled a narrower version of). `[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:101-124]`
 
 ### `RoleExtensions`
 
@@ -632,6 +708,9 @@ public static class RoleExtensions
         where TRole : unmanaged, Enum;
 
     public static IReadOnlyList<Handle> RoleFilteredMembers<TRole>(this IHypergraphQuery graph, Handle vertex, TRole role)
+        where TRole : unmanaged, Enum;
+
+    public static IReadOnlyList<IReadOnlyList<Handle>> DirectedScc<TRole>(this IHypergraphQuery graph, TRole fromRole, TRole toRole)
         where TRole : unmanaged, Enum;
 }
 ```

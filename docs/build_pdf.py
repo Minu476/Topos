@@ -9,9 +9,12 @@ Pipeline (all in this one script):
   1. Markdown → HTML fragment          (Python `markdown` lib)
   2. Inject id= on every heading       (so #anchor TOC links resolve)
   3. Wrap in styled HTML doc           (self-contained, no external assets)
-  4. HTML → PDF                         (Playwright via the pdf skill's html2pdf-next.js)
-  5. Inject clickable link annotations  (Chromium doesn't emit these for #anchors reliably)
-  6. Set PDF metadata                   (title, author, subject)
+  4. HTML → PDF                         (Playwright via the pdf skill's html2pdf-next.js;
+                                          Chromium emits correct, clickable GoTo-named-destination
+                                          link annotations for every #anchor natively — no
+                                          post-processing needed, see set_pdf_metadata's doc for
+                                          the bug history here)
+  5. Set PDF metadata                   (title, author, subject)
 
 Usage:
   .pdf-venv/bin/python docs/build_pdf.py                       # default: docs/Documentation.{md,pdf}
@@ -208,87 +211,29 @@ def wrap_html(body: str, title: str) -> str:
 """
 
 
-# ── Step 5: inject clickable links into the rendered PDF ────────────────────
-def inject_links(pdf_path: Path, html_path: Path) -> tuple[int, int]:
-    """Add internal-link annotations for every <a href="#anchor"> in the HTML.
-    Chromium's page.pdf() emits these unreliably for in-page anchors in multi-page
-    renders, so we add them explicitly by finding the link text in the PDF and
-    drawing a goto-link rectangle over it pointing at the heading's page.
+# ── Step 5: set PDF metadata ─────────────────────────────────────────────────
+def set_pdf_metadata(pdf_path: Path) -> None:
+    """Set document metadata (title/author/subject/keywords).
 
-    Returns (injected_count, total_links).
+    Internal `#anchor` links do NOT need to be injected here: Chromium's
+    page.pdf() already emits correct, working GoTo-named-destination link
+    annotations for every `<a href="#anchor">` in the source HTML (verified
+    2026-08-03 — all 58 source links resolve to the right page natively).
+
+    An earlier version of this function *also* added a second, overlapping
+    set of link annotations on top of Chromium's own, on the theory that
+    Chromium's internal links were unreliable. That theory was wrong, and the
+    added annotations were themselves buggy (their page-locator searched for
+    each heading's text starting from page 0, where the *table of contents*
+    itself contains the same heading text — so it matched the TOC entry, not
+    the real heading, and pointed almost every link back to page 0, i.e.
+    nowhere). Layered on top of Chromium's correct links, these broken
+    duplicates were what actually intercepted clicks in at least one PDF
+    viewer, making the (real, correct, blue-styled) links look dead. Removed
+    entirely rather than patched, since Chromium's native output already does
+    this job correctly with no extra code needed.
     """
-    html = html_path.read_text(encoding="utf-8")
-
-    # anchor -> heading's visible text
-    anchor_to_text: dict[str, str] = {}
-    for m in re.finditer(r'<h([1-6])\s+id="([^"]+)"\s*>(.*?)</h\1>', html, re.DOTALL):
-        anchor, inner = m.group(2), m.group(3)
-        visible = re.sub(r"<[^>]+>", "", html_lib.unescape(inner)).strip()
-        anchor_to_text[anchor] = visible
-
-    # (anchor, link_visible_text) for every internal link
-    links: list[tuple[str, str]] = []
-    for m in re.finditer(r'<a\s+href="#([^"]+)"[^>]*>(.*?)</a>', html, re.DOTALL):
-        anchor, inner = m.group(1), m.group(2)
-        visible = re.sub(r"<[^>]+>", "", html_lib.unescape(inner)).strip()
-        if anchor in anchor_to_text:
-            links.append((anchor, visible))
-
     doc = pymupdf.open(pdf_path)
-
-    # Locate each heading's destination page (search for its text).
-    anchor_to_page: dict[str, int | None] = {}
-    for anchor, heading_text in anchor_to_text.items():
-        needle = heading_text[:40].strip()
-        found = None
-        for page_num in range(len(doc)):
-            if doc[page_num].search_for(needle):
-                found = page_num
-                break
-        if found is None:  # retry with shorter needle
-            needle2 = heading_text[:20].strip()
-            for page_num in range(len(doc)):
-                if doc[page_num].search_for(needle2):
-                    found = page_num
-                    break
-        anchor_to_page[anchor] = found
-
-    # For each link, find its visible text and draw a goto-link rectangle.
-    # Two shapes of links exist:
-    #   (a) long TOC labels ("2. Concepts — the mental model") — search the TOC region (pages 0-4)
-    #   (b) shorthand body refs ("§4.7") — search the body (pages 5+)
-    injected = 0
-    for anchor, link_text in links:
-        target_page = anchor_to_page.get(anchor)
-        if target_page is None:
-            continue
-        is_shorthand = link_text.startswith("§") or len(link_text) <= 8
-        found_rect = None
-        found_on_page = None
-        if is_shorthand:
-            for body_page in range(5, len(doc)):
-                rects = doc[body_page].search_for(link_text)
-                if rects:
-                    found_rect, found_on_page = rects[0], body_page
-                    break
-        else:
-            needle = link_text[:50].strip()
-            for toc_page in range(min(6, len(doc))):
-                rects = doc[toc_page].search_for(needle)
-                if rects:
-                    found_rect, found_on_page = rects[0], toc_page
-                    break
-        if found_rect is None:
-            continue
-        doc[found_on_page].insert_link({
-            "kind": pymupdf.LINK_GOTO,
-            "from": found_rect,
-            "page": target_page,
-            "to": pymupdf.Point(0, 36),
-        })
-        injected += 1
-
-    # Step 6: metadata
     doc.set_metadata({
         "title": DOC_TITLE,
         "author": DOC_AUTHOR,
@@ -298,7 +243,6 @@ def inject_links(pdf_path: Path, html_path: Path) -> tuple[int, int]:
     })
     doc.saveIncr()
     doc.close()
-    return injected, len(links)
 
 
 # ── Orchestration ────────────────────────────────────────────────────────────
@@ -360,7 +304,7 @@ def main(argv: list[str]) -> int:
         print(f"✗ html2pdf-next.js not found at {HTML2PDF_JS}", file=sys.stderr)
         print("  Install the zcode-plugins-official document-skills plugin.", file=sys.stderr)
         return 1
-    # Always start from a clean PDF (the link-injector uses saveIncr() which appends).
+    # Always start from a clean PDF (saveIncr() below appends to whatever's there).
     if pdf_path.exists():
         pdf_path.unlink()
     cmd = ["node", str(HTML2PDF_JS), str(html_path), "--output", str(pdf_path)]
@@ -370,16 +314,16 @@ def main(argv: list[str]) -> int:
         print(result.stderr or result.stdout, file=sys.stderr)
         return 1
 
-    # Steps 5-6: inject links + set metadata
-    print(f"🔗 Injecting clickable TOC links + metadata...")
-    injected, total = inject_links(pdf_path, html_path)
+    # Step 5: metadata (internal links are already correct — see set_pdf_metadata's doc)
+    print(f"🔖 Setting PDF metadata...")
+    set_pdf_metadata(pdf_path)
 
     # Final report
     doc = pymupdf.open(pdf_path)
     n_pages = len(doc)
     internal_links = sum(
         1 for p in range(n_pages) for l in doc[p].get_links()
-        if l.get("kind") == pymupdf.LINK_GOTO
+        if l.get("page") is not None
     )
     meta = doc.metadata
     doc.close()
@@ -392,7 +336,7 @@ def main(argv: list[str]) -> int:
     print(f"  File:    {pdf_path}")
     print(f"  Pages:   {n_pages}")
     print(f"  Size:    {size_kb:.1f} KB")
-    print(f"  Links:   {internal_links} internal clickable ({injected}/{total} source links injected)")
+    print(f"  Links:   {internal_links} internal clickable (native Chromium named-destination links)")
     print(f"  Title:   {meta.get('title')!r}")
     print(f"  Author:  {meta.get('author')!r}")
     print(f"  HTML:    {html_path}")

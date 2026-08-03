@@ -157,4 +157,91 @@ public class ChatMemoryTests
         Assert.Equal(a, b);
         Assert.Equal("Kyoto", memory.NameOf(a));
     }
+
+    [Fact]
+    public void MostConnectedEntities_RanksEntityMentionedAlongsideMoreDistinctOthersHigher()
+    {
+        // Kyoto co-occurs with two distinct entities (Nara, Osaka) across two turns; Tokyo
+        // co-occurs with only Nara, repeated across two turns. Degree is topological (distinct
+        // neighbor count), not raw mention count, so Kyoto must outrank Tokyo even though both
+        // entities are mentioned exactly twice.
+        var memory = new ChatMemory();
+        var kyoto = memory.GetOrCreateEntity("Kyoto");
+        var nara = memory.GetOrCreateEntity("Nara");
+        var osaka = memory.GetOrCreateEntity("Osaka");
+        var tokyo = memory.GetOrCreateEntity("Tokyo");
+
+        var t1 = memory.RecordTurn("user", "Kyoto and Nara are close together.", [0.1f], T0);
+        memory.RecordMention(t1, [kyoto, nara]);
+        var t2 = memory.RecordTurn("user", "Kyoto and Osaka are both worth visiting.", [0.2f], T0);
+        memory.RecordMention(t2, [kyoto, osaka]);
+
+        var t3 = memory.RecordTurn("user", "Tokyo and Nara, again.", [0.3f], T0);
+        memory.RecordMention(t3, [tokyo, nara]);
+        var t4 = memory.RecordTurn("user", "Tokyo and Nara, once more.", [0.4f], T0);
+        memory.RecordMention(t4, [tokyo, nara]);
+
+        var ranked = memory.MostConnectedEntities(topK: 4);
+
+        var kyotoRank = ranked.ToList().FindIndex(r => r.Entity == kyoto);
+        var tokyoRank = ranked.ToList().FindIndex(r => r.Entity == tokyo);
+        Assert.True(kyotoRank < tokyoRank, "Kyoto (2 distinct co-mentions) should outrank Tokyo (1 distinct co-mention).");
+    }
+
+    [Fact]
+    public void RankByImportance_ReturnsDistributionSummingToOneAcrossEveryVertex()
+    {
+        var memory = new ChatMemory();
+        var kyoto = memory.GetOrCreateEntity("Kyoto");
+        var t1 = memory.RecordTurn("user", "Kyoto in spring?", [1f], T0);
+        var t2 = memory.RecordTurn("agent", "Kyoto is lovely in spring.", [1f], T0);
+        memory.RecordMention(t1, [kyoto]);
+        memory.RecordMention(t2, [kyoto]);
+
+        var ranks = memory.RankByImportance();
+
+        Assert.Equal(1.0, ranks.Values.Sum(), precision: 6);
+        // Kyoto is a member of both mention hyperedges -- strictly more connected than either
+        // single-mention turn -- so it must rank at least as high as each.
+        Assert.True(ranks[kyoto] >= ranks[t1]);
+        Assert.True(ranks[kyoto] >= ranks[t2]);
+    }
+
+    [Fact]
+    public void DetectCircularDerivations_NoCycle_ReturnsEmpty()
+    {
+        var memory = new ChatMemory();
+        var turn = memory.RecordTurn("user", "My flight lands at 6pm.", [0.1f], T0);
+        var factA = memory.RecordExtractedFact(turn, "Flight arrival: 6pm", AssertionMode.Asserted);
+        var factB = memory.RecordExtractedFact(turn, "User will be free after 7pm", AssertionMode.Hypothesized);
+
+        memory.RecordDerivation(derivedFact: factB, sourceFact: factA);
+
+        Assert.Empty(memory.DetectCircularDerivations());
+    }
+
+    [Fact]
+    public void DetectCircularDerivations_ThreeFactCycle_FindsTheWholeCycle()
+    {
+        // An agent bug: fact A derived from B, B from C, and C from A -- each "justified" only by
+        // the others, with no real anchor to the source turn. This is exactly the class of
+        // hand-rolled cycle guard docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md finding #4 describes.
+        var memory = new ChatMemory();
+        var turn = memory.RecordTurn("user", "I'm not sure what I meant.", [0.1f], T0);
+        var factA = memory.RecordExtractedFact(turn, "A", AssertionMode.Hypothesized);
+        var factB = memory.RecordExtractedFact(turn, "B", AssertionMode.Hypothesized);
+        var factC = memory.RecordExtractedFact(turn, "C", AssertionMode.Hypothesized);
+
+        memory.RecordDerivation(derivedFact: factA, sourceFact: factB);
+        memory.RecordDerivation(derivedFact: factB, sourceFact: factC);
+        memory.RecordDerivation(derivedFact: factC, sourceFact: factA);
+
+        var cycles = memory.DetectCircularDerivations();
+
+        Assert.Single(cycles);
+        Assert.Equal(3, cycles[0].Count);
+        Assert.Contains(factA, cycles[0]);
+        Assert.Contains(factB, cycles[0]);
+        Assert.Contains(factC, cycles[0]);
+    }
 }

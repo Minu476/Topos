@@ -382,10 +382,105 @@ even though they share the same hyperedges. `[verified:src=src/Topos.Hypergraph.
 
 ---
 
+## Pattern 9 — Ranking and structural analysis (centrality, PageRank, directed SCC)
+
+**When to use:** once you have a graph of any size, three questions come up constantly — *which
+vertex matters most* (centrality/PageRank), and *does this directed relationship contain a cycle
+that shouldn't be there* (directed SCC). M11 phase 1 added all three as GDS-verified algorithms
+(`docs/ALGORITHM_SPEC.md` §5.5/§5.6; `docs/DECISIONS.md`'s "M11 PHASE 1 APPROVED AND IMPLEMENTED"
+entry). `[verified:src=src/Topos.Hypergraph/Centrality.cs]` `[verified:src=src/Topos.Hypergraph/PageRank.cs]`
+`[verified:src=src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs:101-124]`
+
+### 9a — Degree / closeness / betweenness centrality
+
+```csharp
+using Topos.Hypergraph;
+
+IReadOnlyDictionary<Handle, int>    degree      = Centrality.Degree(kernel);
+IReadOnlyDictionary<Handle, double> closeness   = Centrality.Closeness(kernel);
+IReadOnlyDictionary<Handle, double> betweenness = Centrality.Betweenness(kernel);
+
+// "Which entities anchor the most distinct parts of the conversation?"
+var mostConnected = degree.OrderByDescending(kv => kv.Value).Take(5);
+```
+
+All three operate over the same clique-expansion adjacency `Modularity`/`TriangleCount`/
+`LabelPropagation` already share (**not** `GetBfs`'s member-only hop convention) — one N-member
+hyperedge is treated as a clique on its N members for the purposes of these algorithms, matching
+what the GDS oracle compares against. `Closeness` scores each vertex only against its own reachable
+set (GDS's `useWassermanFaustFormula = false` default), so disconnected components each get an
+internally-consistent score rather than one artificially deflated by unreachable vertices elsewhere.
+`[verified:src=src/Topos.Hypergraph/Centrality.cs:31-41]`
+
+Worked example — ranking named entities by how topologically connected they are (not raw mention
+count): `samples/Topos.Samples.ChatMemory.MostConnectedEntities`.
+`[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs]`
+
+### 9b — PageRank
+
+```csharp
+IReadOnlyDictionary<Handle, double> rank = PageRank.Compute(kernel, damping: 0.85);
+
+// "What's load-bearing enough to keep if I have to trim this memory?"
+var mostImportant = rank.OrderByDescending(kv => kv.Value).First();
+```
+
+Power iteration to a fixed tolerance (default `1e-6`) or iteration cap (default `100`); the result
+always sums to `1.0` across every vertex regardless of damping or dangling-node mass. Same
+symmetric, kernel-level adjacency as `Centrality` — a directed PageRank variant would belong in
+`Topos.Hypergraph.Knowledge` if a consumer ever needs one (spec §6.3).
+
+Worked example: `samples/Topos.Samples.ChatMemory.RankByImportance`.
+
+### 9c — Directed SCC: catching cycles that shouldn't exist
+
+**When to use:** your domain has a directed relationship (Anchor→Target, Derived→Source,
+Before→After) where a cycle is a correctness bug, not just a topological curiosity — an agent
+deriving fact A from B, B from C, and C from A is circular reasoning, not three independent facts.
+Requires `Topos.Hypergraph.Knowledge` (same package as Pattern 8).
+
+```csharp
+using Topos.Hypergraph.Knowledge;
+
+public enum DerivationRole : byte { Derived = 0, Source = 1 }
+
+// Build a directed derivation edge per (derived fact, source fact) pair — the two-role hyperedge
+// shape DirectedScc needs (see Pattern 1's "directed n-ary" variant), not nested reification.
+Handle derivation = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(derivation, factA, DerivationRole.Derived, ordinal: 0);
+kernel.AddIncidence(derivation, factB, DerivationRole.Source,  ordinal: 1);
+
+IReadOnlyList<IReadOnlyList<Handle>> components =
+    kernel.DirectedScc(DerivationRole.Derived, DerivationRole.Source);
+
+// Every non-cyclic fact lands in its own singleton component (DirectedScc's documented "every
+// vertex, including singletons" convention) — filter those out to isolate real cycles.
+var cycles = components.Where(c => c.Count > 1).ToList();
+```
+
+This generalizes the class of hand-rolled directed-cycle guard `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md`
+finding #4 describes (NexusVerifier's AND-OR proof chainer needed exactly this, read the kernel's
+own `HasCycle` doc, correctly backed off since `HasCycle` is role-blind and trivially `true` on any
+real n-ary hypergraph, and hand-rolled a per-DFS-path guard instead). `DirectedScc` is the tested,
+generic replacement — iterative Tarjan, GDS-verifiable via `gds.scc` over a role-projected directed
+graph. Worked example: `samples/Topos.Samples.ChatMemory.RecordDerivation` +
+`.DetectCircularDerivations`. `[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs]`
+
+> **Don't confuse this with `HasCycle`.** `HasCycle` (Pattern 8's warning, repeated here because
+> it's the single most common mistake) is the kernel's role-blind cycle check — it returns `true`
+> on almost any real n-ary hypergraph, because three co-members are trivially "cyclic" at that
+> layer. `DirectedScc` is the role-aware answer: it only follows `fromRole`→`toRole` legs, so
+> co-membership alone (e.g. sharing a hyperedge as a `Condition`) never counts as a cycle.
+
+---
+
 ## Where to go next
 
 - **Look up a type used above** → [`API_REFERENCE.md`](API_REFERENCE.md).
 - **Read a real, working consumer end-to-end** → [`samples/Topos.Samples.ChatMemory/`](../samples/Topos.Samples.ChatMemory)
-  — conversation turns, named entities, semantic recall, a feedback loop, all built from these patterns.
+  — conversation turns, named entities, semantic recall, a feedback loop, ranking, and cycle
+  detection, all built from these patterns.
 - **The role-byte convention** (why `enum : byte` and not `const byte`) → [`ROLE_CONVENTIONS.md`](ROLE_CONVENTIONS.md).
 - **The thesis these patterns serve** → [`SPECIFICATION.md` §1–§7](SPECIFICATION.md).
+- **The library survey behind these three algorithms' oracle/provenance choices** →
+  [`ALGORITHM_SURVEY.md`](ALGORITHM_SURVEY.md) and [`ALGORITHM_SPEC.md`](ALGORITHM_SPEC.md).

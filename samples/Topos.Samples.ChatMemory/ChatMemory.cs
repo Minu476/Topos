@@ -1,4 +1,5 @@
 using Topos.Hypergraph;
+using Topos.Hypergraph.Knowledge;
 
 namespace Topos.Samples.ChatMemory;
 
@@ -15,6 +16,15 @@ namespace Topos.Samples.ChatMemory;
 /// independent facts, and a binary graph would have to either fragment it into three separate
 /// edges (losing the "these were mentioned together, in this one turn" atomicity) or invent an
 /// artificial join-node to fake N-ary-ness. Here it's just one hyperedge.
+///
+/// Also a real consumer of M11 phase 1's algorithm additions (spec's M11 milestone row;
+/// `docs/DECISIONS.md`'s "M11 PHASE 1 APPROVED AND IMPLEMENTED" entry): <see cref="MostConnectedEntities"/>
+/// and <see cref="RankByImportance"/> use <see cref="Centrality"/>/<see cref="PageRank"/> over this
+/// domain's own conversation topology, and <see cref="DetectCircularDerivations"/> uses the
+/// Knowledge package's <see cref="Topos.Hypergraph.Knowledge.DirectedTraversal.DirectedScc"/> to
+/// catch a genuine class of agent-memory bug (circular fact derivation) — this is an in-repo
+/// example/consumer, not the cross-repo RLB/NexusVerifier adoption the spec's own exit criterion
+/// (§7) still calls for.
 /// </summary>
 public sealed class ChatMemory
 {
@@ -29,6 +39,16 @@ public sealed class ChatMemory
     private readonly Dictionary<string, Handle> _entitiesByName = new(StringComparer.OrdinalIgnoreCase);
 
     private const byte SpeakerRole = 0, MentionedRole = 1, DerivedFromRole = 1, RecallQueryRole = 0, RecallResultRole = 1;
+
+    /// <summary>
+    /// Roles for a two-member derivation hyperedge (<see cref="RecordDerivation"/>) — distinct
+    /// from <see cref="RecordExtractedFact"/>'s single-member "which turn did this come from" link.
+    /// A derivation edge is the shape <see cref="DirectedTraversal.DirectedScc"/> needs: a
+    /// hyperedge with a member holding <see cref="DerivationRole.Derived"/> and a member holding
+    /// <see cref="DerivationRole.Source"/>, so the M9 Knowledge package can walk Derived→Source
+    /// legs directedly.
+    /// </summary>
+    private enum DerivationRole : byte { Derived = 0, Source = 1 }
 
     public ChatMemory()
     {
@@ -96,6 +116,54 @@ public sealed class ChatMemory
 
     public AssertionMode? ModeOf(Handle fact) =>
         _kernel.TryGetProperty(_mode, fact, out var mode) ? mode : null;
+
+    /// <summary>Records that <paramref name="derivedFact"/> was derived from <paramref name="sourceFact"/> — a directed derivation link between two extracted facts (distinct from <see cref="RecordExtractedFact"/>'s source-turn link), enabling <see cref="DetectCircularDerivations"/>.</summary>
+    public Handle RecordDerivation(Handle derivedFact, Handle sourceFact)
+    {
+        var derivation = _kernel.CreateVertex(VertexRoles.Edge);
+        _kernel.AddIncidence(derivation, derivedFact, (byte)DerivationRole.Derived, ordinal: 0);
+        _kernel.AddIncidence(derivation, sourceFact, (byte)DerivationRole.Source, ordinal: 1);
+        return derivation;
+    }
+
+    /// <summary>
+    /// Finds circular fact derivation — an agent deriving fact A from B, B from C, and C from A
+    /// is an epistemic bug (a "fact" ultimately justified only by itself), not harmless noise.
+    /// M11 phase 1's <see cref="DirectedTraversal.DirectedScc"/> (spec's Knowledge layer) finds
+    /// every strongly-connected component over the Derived→Source adjacency; every non-cyclic fact
+    /// lands in its own singleton component (<c>DirectedScc</c>'s documented "every vertex,
+    /// including singletons" convention), so filtering to components with more than one member
+    /// isolates genuine derivation cycles. This generalizes the class of hand-rolled cycle guards
+    /// `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` finding #4 describes, for this domain's own
+    /// derivation shape rather than NexusVerifier's Anchor/Target one.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<Handle>> DetectCircularDerivations() =>
+        [.. _kernel.DirectedScc((byte)DerivationRole.Derived, (byte)DerivationRole.Source)
+            .Where(component => component.Count > 1)];
+
+    /// <summary>
+    /// Ranks entities by topological degree (<see cref="Centrality.Degree"/>, M11 phase 1) — how
+    /// many distinct turns/entities each co-occurs with under the shared mention-hyperedge
+    /// topology. This is connectedness, not raw mention count: an entity mentioned three times
+    /// alongside the same other entity scores lower than one mentioned twice alongside two
+    /// different entities. Useful for e.g. surfacing which named entities anchor the most distinct
+    /// parts of a conversation.
+    /// </summary>
+    public IReadOnlyList<(Handle Entity, int Degree)> MostConnectedEntities(int topK) =>
+        [.. Centrality.Degree(_kernel)
+            .Where(kv => _entitiesByName.ContainsValue(kv.Key))
+            .OrderByDescending(kv => kv.Value)
+            .ThenBy(kv => kv.Key.Index)
+            .Take(topK)
+            .Select(kv => (kv.Key, kv.Value))];
+
+    /// <summary>
+    /// PageRank (M11 phase 1) over the whole conversation graph — turns, entities, and reified
+    /// facts alike — as the standard iterative "what's load-bearing" signal. A distribution
+    /// summing to 1.0 across every vertex; useful for e.g. deciding what to keep first when
+    /// trimming an over-long memory.
+    /// </summary>
+    public IReadOnlyDictionary<Handle, double> RankByImportance() => PageRank.Compute(_kernel);
 
     /// <summary>Semantic recall over every turn with an embedding — the M5 vector index doing real retrieval work, not just existing as an unused class.</summary>
     public IReadOnlyList<(Handle Turn, float Distance)> RecallSimilarTurns(float[] queryEmbedding, int k) =>

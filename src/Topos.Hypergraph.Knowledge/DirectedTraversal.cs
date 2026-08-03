@@ -98,6 +98,118 @@ public static class DirectedTraversal
             .Where(i => i.Role == role)
             .Select(i => i.Member)];
 
+    /// <summary>
+    /// Strongly-connected components over the role-aware directed graph: two vertices are
+    /// strongly connected iff each is reachable from the other following only
+    /// <paramref name="fromRole"/>→<paramref name="toRole"/> hyperedge legs (the same directed
+    /// adjacency <see cref="DirectedBfs"/> walks). This is the directed counterpart to the
+    /// kernel's <see cref="IHypergraphQuery.GetConnectedComponents"/> (WCC-equivalent) — the
+    /// kernel deliberately doesn't offer directed SCC itself because direction needs
+    /// role-awareness, a layer-1 concern (spec §4.1: "the kernel does not judge"). Tarjan's
+    /// algorithm, iterative (explicit work-stack, not recursive) to avoid stack-depth limits on
+    /// large graphs — same discipline as the kernel's <see cref="IHypergraphQuery.GetDfs"/>.
+    ///
+    /// Every vertex gets a component, including singletons for vertices that never hold
+    /// <paramref name="fromRole"/> or <paramref name="toRole"/> anywhere (mirroring
+    /// <see cref="IHypergraphQuery.GetConnectedComponents"/>'s "every vertex, including
+    /// singletons" convention) — a component's grouping, not its position in the returned list,
+    /// is the cross-implementation invariant; Tarjan visits vertices and emits finished components
+    /// in reverse-topological order of the condensation DAG, which is an implementation detail, not
+    /// a contract.
+    ///
+    /// GDS-verifiable via <c>gds.scc</c> over a role-projected directed graph (project
+    /// <paramref name="fromRole"/>→<paramref name="toRole"/> legs as directed binary edges,
+    /// run <c>gds.scc</c>, compare which vertices share a component — not the raw community IDs,
+    /// which are arbitrary labels).
+    /// </summary>
+    public static IReadOnlyList<IReadOnlyList<Handle>> DirectedScc(
+        this IHypergraphQuery graph, byte fromRole, byte toRole)
+    {
+        var index = new Dictionary<Handle, int>();
+        var lowlink = new Dictionary<Handle, int>();
+        var onStack = new HashSet<Handle>();
+        var tarjanStack = new Stack<Handle>();
+        var result = new List<IReadOnlyList<Handle>>();
+        int counter = 0;
+
+        foreach (var root in graph.VertexHandles())
+        {
+            if (index.ContainsKey(root)) continue;
+            StrongConnect(root);
+        }
+
+        return result;
+
+        void StrongConnect(Handle start)
+        {
+            var work = new Stack<(Handle Vertex, IEnumerator<Handle> Successors)>();
+            Push(start);
+
+            while (work.Count > 0)
+            {
+                var (v, successors) = work.Peek();
+                if (successors.MoveNext())
+                {
+                    var w = successors.Current;
+                    if (!index.ContainsKey(w))
+                    {
+                        Push(w);
+                    }
+                    else if (onStack.Contains(w))
+                    {
+                        lowlink[v] = Math.Min(lowlink[v], index[w]);
+                    }
+                }
+                else
+                {
+                    work.Pop();
+                    if (work.Count > 0)
+                    {
+                        var parent = work.Peek().Vertex;
+                        lowlink[parent] = Math.Min(lowlink[parent], lowlink[v]);
+                    }
+
+                    if (lowlink[v] == index[v])
+                    {
+                        var component = new List<Handle>();
+                        Handle w;
+                        do
+                        {
+                            w = tarjanStack.Pop();
+                            onStack.Remove(w);
+                            component.Add(w);
+                        } while (w != v);
+                        result.Add(component);
+                    }
+                }
+            }
+
+            void Push(Handle v)
+            {
+                index[v] = counter;
+                lowlink[v] = counter;
+                counter++;
+                tarjanStack.Push(v);
+                onStack.Add(v);
+                work.Push((v, Successors(graph, v, fromRole, toRole).GetEnumerator()));
+            }
+        }
+    }
+
+    private static IEnumerable<Handle> Successors(IHypergraphQuery graph, Handle current, byte fromRole, byte toRole)
+    {
+        foreach (var edge in graph.GetVertexHyperedges(current))
+        {
+            var members = graph.GetHyperedgeVertices(edge);
+            if (!members.Any(m => m.Member == current && m.Role == fromRole)) continue;
+
+            foreach (var m in members)
+            {
+                if (m.Role == toRole) yield return m.Member;
+            }
+        }
+    }
+
     private static IReadOnlyList<Handle> ReconstructPath(Dictionary<Handle, Handle> parent, Handle from, Handle to)
     {
         var path = new List<Handle> { to };

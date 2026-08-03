@@ -696,6 +696,136 @@ In priority order:
 
 ---
 
+### 2026-07-30 — M11 PHASE 1 APPROVED AND IMPLEMENTED: Centrality, PageRank, Directed SCC
+
+- **Decider:** Nasser, executed by Sonnet 5 in the same session.
+- **Question:** `docs/ALGORITHM_SPEC.md` (authored by GLM-5.2, a fresh survey-driven proposal)
+  named six must-have algorithm gaps for M11. Three need only the existing GDS oracle
+  (Directed SCC, Centrality, PageRank); the other three (s-connected-components, s-line-graph,
+  s-diameter) need a brand-new HNX oracle test project (Docker sidecar) that doesn't exist yet.
+  The spec also left four open forks (§6) for Nasser: how much to build now, how to stand up the
+  HNX oracle, which adjacency PageRank should use, and whether to open a new milestone.
+- **Decision:** Phase 1 only — the three GDS-only items. HNX oracle setup (and the s-walk family)
+  deferred, not scoped this pass. PageRank: symmetric, kernel-level (matches spec §6.3's own
+  recommendation). Milestone bookkeeping: yes, a new M11 entry (§6.4's recommendation), split into
+  "phase 1"/"phase 2" rather than one M11 that silently only covers half the must-have list.
+- **What shipped:**
+  - `Centrality` (`src/Topos.Hypergraph/Centrality.cs`) — `Degree`/`Closeness`/`Betweenness`, all
+    over `BipartiteAdjacency` (the M6 analytics family's adjacency — Modularity/TriangleCount/
+    LabelPropagation's, not M1's `GetBfs`/`GetShortestPathLength` member-only convention). This is
+    a deliberate deviation from the spec's literal "Built on `GetShortestPathLength`" phrasing for
+    Closeness — chosen because it lets Centrality reuse `CliqueExpansionProjectionEngine`, the
+    exact same oracle projection Modularity/TriangleCount/LabelPropagation already use, with zero
+    new projection machinery and no doubled-bipartite-hop-count correction. Closeness uses GDS's
+    actual default formula (`k / Σdistance`, i.e. `useWassermanFaustFormula = false`), confirmed
+    via web search against Neo4j's own docs, not the spec's looser "reciprocal of the sum" phrasing
+    — chosen because the whole point of the oracle is to match what GDS actually computes.
+  - `PageRank` (`src/Topos.Hypergraph/PageRank.cs`) — standard power iteration over the same
+    `BipartiteAdjacency`, damping 0.85 default (matches `gds.pageRank`'s own default), uniform
+    dangling-mass redistribution.
+  - `DirectedScc` (`src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs` + typed-role overload in
+    `RoleExtensions.cs`) — iterative Tarjan (explicit work-stack, not recursive, matching the
+    kernel's own `GetDfs` discipline) over the role-filtered `fromRole`→`toRole` adjacency
+    `DirectedBfs` already walks.
+  - 30 new unit tests with hand-computed golden values (`CentralityTests`: K4/bowtie
+    degree+closeness+betweenness including a from-scratch Wasserman-Faust derivation;
+    `PageRankTests`: a hand-solved bowtie fixed-point via the graph's mirror symmetry;
+    `DirectedSccTests`: 3-cycle/acyclic-chain/Condition-exclusion/partition-invariant cases).
+  - 6 new GDS-oracle parity tests (`CentralityGdsParityTests`, `PageRankGdsParityTests`,
+    `DirectedSccGdsParityTests` in `tests/Topos.Tests.GdsOracle`, which gained a
+    `Topos.Hypergraph.Knowledge` project reference for the SCC test). Degree/Betweenness/PageRank
+    assert exact-value parity; Closeness asserts a ranking invariant only (same
+    weaker-but-robust-invariant move `AnalyticsGdsParityTests`' LabelPropagation test already makes
+    for its own non-unique-fixed-point reason) — **because no live Neo4j+GDS instance was reachable
+    in the authoring environment (Docker daemon not running) to independently confirm the exact
+    formula before committing to an exact-value assertion.** All six soft-skip cleanly under that
+    condition, per the existing convention; they should be spot-checked once the oracle is
+    reachable, and Closeness tightened to exact-value if it holds.
+  - Full suite: 229/229 passing (up from 177), zero regressions.
+- **Rationale:** all three items were already independently verified absent before implementation
+  (`IHypergraphQuery.cs`, `SWalk.cs`, `DirectedTraversal.cs` read directly, not just trusted from
+  the gap-list doc). Reusing the existing `CliqueExpansionProjectionEngine` for Centrality/PageRank
+  (rather than building a new bipartite-hop-doubling-aware comparison) was chosen for a
+  substantially cleaner, lower-risk oracle story, at the cost of a small deviation from the spec's
+  literal adjacency phrasing — judged acceptable since the spec explicitly delegates
+  implementation-detail judgment calls to the executing session and the M6-family adjacency is
+  already an established, tested Topos convention.
+- **What it changes:** `src/Topos.Hypergraph/Centrality.cs` (new), `src/Topos.Hypergraph/PageRank.cs`
+  (new), `src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs` (`DirectedScc` added),
+  `src/Topos.Hypergraph.Knowledge/RoleExtensions.cs` (`DirectedScc<TRole>` added),
+  `tests/Topos.Hypergraph.Tests/{CentralityTests,PageRankTests}.cs` (new),
+  `tests/Topos.Hypergraph.Knowledge.Tests/DirectedSccTests.cs` (new),
+  `tests/Topos.Tests.GdsOracle/{CentralityGdsParityTests,PageRankGdsParityTests,DirectedSccGdsParityTests}.cs`
+  (new) and that project's `.csproj` (new `Topos.Hypergraph.Knowledge` reference). No changes to
+  `Topos.Hypergraph`'s or `Topos.Hypergraph.Knowledge`'s existing public surface — purely additive.
+- **What's still open, explicitly not this pass:** M11 phase 2 (s-connected-components,
+  s-line-graph, s-diameter — needs the HNX oracle project scoped in spec §3.1/§6.1, not started);
+  a real consumer adopting the new surface (M11's own exit criterion, spec §7 — NexusVerifier's
+  hand-rolled cycle guard replaced by `DirectedScc` is the obvious next step, per finding #4);
+  live-GDS spot-check of the six new oracle parity tests (no Docker/Neo4j reachable this session);
+  Modularity/HIF/LCC (spec's good-to-have bucket, explicitly out of scope for phase 1).
+
+---
+
+### 2026-08-03 — M11 PHASE 1: live-GDS spot-check, in-repo consumer, and docs
+
+- **Decider:** Nasser, executed by Sonnet 5 in the same session. Continuation of the 2026-07-30
+  M11 phase 1 entry above — closes two of that entry's four "still open" items (the live-GDS
+  spot-check, and an in-repo real consumer) and adds the example/documentation surface the M11
+  work itself never got.
+- **Question:** the prior entry shipped Centrality/PageRank/DirectedScc with tests that soft-skip
+  without a reachable Neo4j+GDS instance, and left the algorithms undocumented outside their own
+  XML comments and the proposal docs (no `API_REFERENCE.md`/`USAGE_PATTERNS.md` entries, no
+  consumer using them in this repo). Docker was available this session — worth actually running
+  the oracle rather than leaving the spot-check open indefinitely.
+- **What shipped:**
+  - **Live-GDS spot-check** (`docker start topos-gds-oracle`, per `docs/GDS_ORACLE_SETUP.md`):
+    all 6 M11 parity tests now run against a real Neo4j+GDS instance instead of soft-skipping.
+    Two real findings, not just a clean pass:
+    1. **Closeness matches exactly** — `CentralityGdsParityTests.Closeness_MatchesGdsCloseness_OnBowtie`
+       (renamed from `..._AgreesWithGdsOnWhichVertexRanksHighest_...`) now asserts exact-value
+       parity to 10 decimal places, confirming `gds.closeness`'s `useWassermanFaustFormula = false`
+       default really does match `Centrality.Closeness`'s formula. The prior ranking-only assertion
+       is superseded — this is the exact tightening the 2026-07-30 entry called for once an
+       instance was reachable.
+    2. **PageRank needed a real fix, not just a tightening.** `gds.pageRank`'s default output is
+       **not** a probability distribution — its base term is the classic `(1-d)` per node, not
+       `(1-d)/N` — so raw GDS scores sum to ~N rather than 1 (empirically: every score was ~5×
+       `PageRank.Compute`'s matching value on the file's 5-vertex bowtie). This is a genuine
+       convention difference between the two implementations, not a bug in either: `PageRank.Compute`'s
+       "sums to 1.0" contract is its own documented, intentional choice (matches the conventional
+       "probability distribution" framing of PageRank). `PageRankGdsParityTests` now L1-normalizes
+       GDS's raw scores (divide by their own sum) before comparing, so the assertion is on the
+       *relative* distribution both implementations actually agree on. Full rationale is inline in
+       the test's class doc.
+  - **A real in-repo consumer** (partially closes the M11 exit criterion, spec §7 — the cross-repo
+    half, RLB/NexusVerifier adopting the surface, remains genuinely open; that's other repos, out
+    of scope here): `samples/Topos.Samples.ChatMemory` gained three consumer methods —
+    `MostConnectedEntities` (`Centrality.Degree`), `RankByImportance` (`PageRank.Compute`), and
+    `RecordDerivation`/`DetectCircularDerivations` (`DirectedTraversal.DirectedScc`, catching
+    circular fact-derivation — the same class of bug NexusVerifier finding #4 describes, applied to
+    this domain's own derivation shape). `ChatMemory.csproj` gained a `Topos.Hypergraph.Knowledge`
+    project reference. 4 new tests in `ChatMemoryTests.cs` (13/13 passing, up from 9).
+  - **Documentation:** `docs/API_REFERENCE.md` gained `### Centrality` and `### PageRank` entries
+    under Analytics, and `DirectedScc` was added to the existing `DirectedTraversal`/`RoleExtensions`
+    entries under Knowledge. `docs/USAGE_PATTERNS.md` gained "Pattern 9 — Ranking and structural
+    analysis," covering all three algorithms with the ChatMemory methods as worked examples,
+    including an explicit "don't confuse `DirectedScc` with `HasCycle`" callout (the same mistake
+    Pattern 8 already warns about, repeated here because it's the single most common one).
+  - **Library research:** already comprehensively covered by the pre-existing
+    `docs/ALGORITHM_SURVEY.md`/`ALGORITHM_GAP_LIST.md`/`ALGORITHM_SPEC.md` (GDS as oracle;
+    yamafaktory/hypergraph as implementation provenance for all three algorithms) — not redone
+    this pass, only cross-referenced from the new doc sections.
+- **Full suite:** 233/233 passing (ChatMemory sample: 13, up from 9; kernel/Knowledge/persistence
+  suites unchanged; GDS-oracle: 15/15 live, up from soft-skipping).
+- **What's still open:** M11 phase 2 (s-connected-components/s-line-graph/s-diameter, needs the
+  HNX oracle project, unchanged from the prior entry); the cross-repo half of the M11 exit
+  criterion (RLB's `ToposGraphProjection` and NexusVerifier's chainer actually adopting the new
+  surface — different repos, not touched this session); Modularity/HIF/LCC (still good-to-have,
+  out of scope).
+
+---
+
 ## 7. Decision log format for future entries
 
 When Nasser or a reviewer makes a decision that closes an open item, append it to §6 above as:

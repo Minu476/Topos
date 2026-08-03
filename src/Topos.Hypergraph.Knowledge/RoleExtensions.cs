@@ -34,6 +34,11 @@ public static class RoleExtensions
         where TRole : unmanaged, Enum =>
         graph.RoleFilteredMembers(vertex, RoleToByte(role));
 
+    /// <summary><see cref="DirectedTraversal.DirectedScc"/>, typed-role overload — see `docs/ROLE_CONVENTIONS.md`.</summary>
+    public static IReadOnlyList<IReadOnlyList<Handle>> DirectedScc<TRole>(this IHypergraphQuery graph, TRole fromRole, TRole toRole)
+        where TRole : unmanaged, Enum =>
+        graph.DirectedScc(RoleToByte(fromRole), RoleToByte(toRole));
+
     /// <summary>
     /// Reinterprets a byte-backed enum's bit pattern as a <c>byte</c> with no boxing — the "free"
     /// cast `docs/ROLE_CONVENTIONS.md` describes. Throws for any <typeparamref name="TRole"/> not
