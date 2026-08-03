@@ -20,7 +20,8 @@ Verified against the three csproj files 2026-07-26: `[verified:src=src/Topos.Hyp
 `[verified:src=src/Topos.Hypergraph.Knowledge/Topos.Hypergraph.Knowledge.csproj]`
 
 Each package already has: `PackageId`, `Authors` (`Nasser Towfigh`), `Copyright`
-(`Copyright © 2026 Nasser Towfigh`), `Version` (prerelease: `0.1.0-m8` / `0.1.0-m8` / `0.1.0-m9`),
+(`Copyright © 2026 Nasser Towfigh`), `Version` (prerelease: `0.2.0-m.11` / `0.2.0-m.8` / `0.2.0-m.11`
+— dot-separated, see §4's correction box),
 `Description`, `TargetFramework` (`net10.0`). All three target `net10.0` with `Nullable` +
 `ImplicitUsings` enabled. The repo is **public** as of 2026-07-26
 (`https://github.com/Minu476/Topos`). `[verified:web=https://github.com/Minu476/Topos]`
@@ -131,27 +132,58 @@ unrelated packages.
 (hidden from search) but **never deleted or re-pinished** — the version number is permanently
 consumed. `[verified:web=https://learn.microsoft.com/nuget/nuget-org/policies/deleting-packages]`
 
-The csprojs currently carry milestone-prerelease versions:
-`[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj — <Version>0.1.0-m8</Version>]`
+> ### ⚠️ The undotted `-mN` scheme was BROKEN — corrected 2026-08-03
+>
+> This section previously certified `0.1.0-m8` / `0.1.0-m9` as "✅ valid" and recommended
+> publishing them as-is. **That assessment was wrong, and acting on it shipped a real defect.**
+>
+> Those strings are *syntactically* valid SemVer but they **sort in the wrong order**. SemVer 2.0
+> compares a prerelease tag as dot-separated identifiers; an undotted `m11` is a single
+> alphanumeric identifier compared in ASCII order, so character-by-character `m11 < m8` (`'1' <
+> '8'`) and `m10 < m9`. Verified against NuGet's own `VersionComparer`, the true published order is:
+>
+> ```
+> 0.1.0-m11  <  0.1.0-m8  <  0.1.0-m9
+> ```
+>
+> **Live consequence:** after publishing `0.1.0-m11` on 2026-08-03, `dotnet add package
+> Topos.Hypergraph --prerelease` still resolved to **`0.1.0-m8`** — the newer packages were
+> unreachable through the normal install path. Mixing versions also produced a hard
+> `NU1605 package downgrade` error. Latent since `m10` (the first double-digit milestone); first
+> surfaced by the cross-package M11 bump.
+>
+> **The fix is two changes, and the second is not optional:**
+> 1. **Dot the suffix** (`-m.11`) so the numeric part becomes its own identifier, compared
+>    numerically: `m.8 < m.9 < m.10 < m.11` ✅
+> 2. **Bump the base version** `0.1.0` → `0.2.0`. Dotting *alone* does not help, because every
+>    `m.N` sorts *below* every already-published `mN` (`0.1.0-m.99 < 0.1.0-m8`). Only the
+>    base-version bump clears the previously-published set.
+>
+> Already-published `0.1.0-m*` versions can be unlisted but never deleted or corrected.
 
-| Package | Current `<Version>` | SemVer 2.0 prerelease-valid? |
+The csprojs carry milestone-prerelease versions, **dot-separated** per the correction above:
+`[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj — <Version>0.2.0-m.11</Version>]`
+
+| Package | Current `<Version>` | Orders correctly? |
 |---|---|---|
-| `Topos.Hypergraph` | `0.1.0-m8` | ✅ valid (prerelease tag `m8` after `-`) |
-| `Topos.Hypergraph.Persistence` | `0.1.0-m8` | ✅ valid |
-| `Topos.Hypergraph.Knowledge` | `0.1.0-m9` | ✅ valid |
+| `Topos.Hypergraph` | `0.2.0-m.11` | ✅ — dotted suffix; base bump clears published `0.1.0-m8`/`-m11` |
+| `Topos.Hypergraph.Persistence` | `0.2.0-m.8` | ✅ — milestone stays 8 (code unchanged since M8); base bump clears published `0.1.0-m8` |
+| `Topos.Hypergraph.Knowledge` | `0.2.0-m.11` | ✅ — clears published `0.1.0-m9`/`-m11` |
+| `Topos.Hypergraph.Mcp` | `0.2.0-m.10` | ✅ — never published; bumped for scheme consistency |
 
 NuGet.org accepts these as prereleases; consumers opt in with `dotnet add package Topos.Hypergraph --prerelease`.
-That's the right shape for a first publish — it signals "not 1.0 yet, API may move" without
-foreclosing a clean `1.0.0` later.
+That's the right shape pre-1.0 — it signals "API may move" without foreclosing a clean `1.0.0` later.
 
-**Recommended:** publish the first three as `0.1.0-m8` (kernel + persistence, which shipped
-together) and `0.1.0-m9` (knowledge, which is the newer milestone) — exactly the current csproj
-values. No version edits needed for the first publish. For subsequent publishes, bump per SemVer
-(patch for bugfix, minor for additive, major for breaking) and never reuse a version string.
+**For every subsequent publish:** keep the suffix dotted, bump per SemVer (patch for bugfix, minor
+for additive, major for breaking), and never reuse a version string. **Before publishing, verify
+the new version actually sorts above the highest published one** — do not eyeball it. The check
+that caught this bug:
 
-If you'd rather publish under a cleaner `0.1.0-beta1` / `0.2.0` shape, edit the `<Version>` tags
-in step 3's same commit — but read the gotcha in §7 first (the `0.1.0-mN` strings already align
-with the milestone roadmap and are less likely to confuse someone reading the spec).
+```csharp
+// dotnet add package NuGet.Versioning
+VersionComparer.Default.Compare(
+    NuGetVersion.Parse("<new>"), NuGetVersion.Parse("<highest published>")) > 0
+```
 
 ---
 

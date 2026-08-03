@@ -106,10 +106,15 @@ dotnet add package Topos.Hypergraph.Persistence      # optional — save/load
 dotnet add package Topos.Hypergraph.Knowledge        # optional — directed/role-aware traversal
 ```
 
-The first release will be the milestone prerelease versions:
-`Topos.Hypergraph` `0.1.0-m8`, `Topos.Hypergraph.Persistence` `0.1.0-m8`,
-`Topos.Hypergraph.Knowledge` `0.1.0-m9`. As prereleases, install opts in with `--prerelease`:
-`[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj — <Version>0.1.0-m8</Version>]`
+Current versions are milestone prereleases with a **dot-separated** suffix:
+`Topos.Hypergraph` `0.2.0-m.11`, `Topos.Hypergraph.Persistence` `0.2.0-m.8`,
+`Topos.Hypergraph.Knowledge` `0.2.0-m.11`. As prereleases, install opts in with `--prerelease`:
+`[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj — <Version>0.2.0-m.11</Version>]`
+
+> **Note on the earlier `0.1.0-m*` releases.** An undotted milestone suffix sorts wrong under
+> SemVer 2.0 (`m11` compares below `m8` in ASCII order), so the `0.1.0-m8`/`-m9`/`-m11` versions
+> on nuget.org are not in the order their names suggest. They remain published but superseded;
+> use `0.2.0-m.*` or later. See `docs/NUGET_PUBLISH_CHECKLIST.md` §4.
 
 ```bash
 dotnet add package Topos.Hypergraph --prerelease

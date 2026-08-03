@@ -26,7 +26,14 @@
     </Description>
     <Authors>Nasser Towfigh</Authors>
     <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
-    <Version>0.1.0-m11</Version>
+    <!-- Prerelease suffix is DOT-separated (`-m.11`, not `-m11`) — required, not cosmetic.
+         SemVer 2.0 compares an undotted `m11` as one alphanumeric identifier in ASCII order,
+         so `m11` sorts BELOW `m8` and `m10` below `m9`. Dotting it makes the numeric part its
+         own identifier, which is compared numerically. The base version moved 0.1.0 → 0.2.0 in
+         the same change because every `m.N` sorts below every already-published `mN`, so the
+         minor bump is what actually clears the previously-published set. See docs/DECISIONS.md
+         2026-08-03 "NUGET VERSION SCHEME CORRECTED". -->
+    <Version>0.2.0-m.11</Version>
     <!-- License: SPDX expression. NuGet.org renders this; no file-bundling needed. -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <!-- Source repo: lets consumers trace the package back to this code. -->

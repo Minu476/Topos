@@ -826,6 +826,55 @@ In priority order:
 
 ---
 
+### 2026-08-03 — NUGET VERSION SCHEME CORRECTED: `-mN` → `-m.N`, base `0.1.0` → `0.2.0`
+
+- **Decider:** Nasser, executed by Opus 5. Corrects an assessment this log and
+  `docs/NUGET_PUBLISH_CHECKLIST.md` both previously got wrong.
+- **The defect:** the milestone-prerelease convention `0.1.0-mN` **sorts in the wrong order**.
+  SemVer 2.0 compares a prerelease tag as dot-separated identifiers; an undotted `m11` is a
+  single alphanumeric identifier compared in ASCII order, so character-by-character `m11 < m8`
+  (`'1' < '8'`) and `m10 < m9`. Verified against NuGet's own `VersionComparer` (not read off the
+  spec): the true order of what is published is `0.1.0-m11 < 0.1.0-m8 < 0.1.0-m9`.
+- **Live consequence, observed not theorised:** after publishing `0.1.0-m11` earlier the same
+  day, `dotnet add package Topos.Hypergraph --prerelease` **still resolved to `0.1.0-m8`** — the
+  newly-published packages were unreachable via the normal install path. Mixing an explicit
+  `--version 0.1.0-m11` with the older `Knowledge 0.1.0-m9` (which depends on
+  `Topos.Hypergraph >= 0.1.0-m8`) produced a hard `NU1605 Detected package downgrade` failure.
+  **This was misdiagnosed once before being understood:** during the publish session the
+  `--prerelease` install returning `m8` was attributed to nuget.org CDN propagation lag and
+  waved through. It was not lag; it was this bug. Latent since `m10` (the first double-digit
+  milestone, 2026-07-27); first surfaced by the cross-package M11 bump.
+- **Decision — two changes, the second is load-bearing:**
+  1. **Dot the suffix** (`-m.11`), making the numeric part its own identifier, compared
+     numerically: `m.8 < m.9 < m.10 < m.11 < m.100` ✅
+  2. **Bump the base version `0.1.0` → `0.2.0`.** Dotting *alone does not fix it*, because every
+     `m.N` sorts *below* every already-published `mN` — verified: `0.1.0-m.99 < 0.1.0-m8`, since
+     the first identifier `"m"` sorts below `"m8"` lexically. Only the base-version bump clears
+     the previously-published set. A minor (not patch) bump also matches what actually shipped:
+     M11 phase 1 added new public API (`Centrality`, `PageRank`, `DirectedScc`).
+- **New versions:** `Topos.Hypergraph` `0.2.0-m.11`, `Topos.Hypergraph.Knowledge` `0.2.0-m.11`,
+  `Topos.Hypergraph.Persistence` `0.2.0-m.8` (milestone stays 8 — that package's code is
+  unchanged since M8; only the base moves, which is what clears its published `0.1.0-m8`),
+  `Topos.Hypergraph.Mcp` `0.2.0-m.10` (never published; bumped for scheme consistency). Each
+  csproj carries an inline comment explaining why the dot is required, so the next person to
+  touch a `<Version>` does not silently undo it.
+- **What could NOT be fixed:** the already-published `0.1.0-m8`/`-m9`/`-m11` versions. NuGet
+  versions can be unlisted but never deleted or re-pushed — the strings are permanently consumed
+  and permanently mis-ordered. Unlisting them is a separate call, not made here.
+- **Process lesson, recorded because it is the actual root cause:** `NUGET_PUBLISH_CHECKLIST.md`
+  §4 explicitly certified these versions "✅ valid (prerelease tag `m8` after `-`)" and
+  recommended publishing them as-is. That check tested *syntactic* validity and never tested
+  *ordering* — the property that actually matters. The checklist now carries a correction box
+  and a required pre-publish assertion that the new version compares greater than the highest
+  published one, using `VersionComparer` rather than eyeballing.
+- **What it changes:** `<Version>` in all four `src/*/*.csproj`, the version table + a correction
+  box in `docs/NUGET_PUBLISH_CHECKLIST.md` §4 and its §1 summary line, and the install-versions
+  paragraph in `docs/Documentation.md` §1. No code, no API, no test changes.
+- **Not done here:** republishing to NuGet under the new versions (a separate, permanent action
+  requiring an explicit go-ahead), and unlisting the mis-ordered `0.1.0-m*` versions.
+
+---
+
 ## 7. Decision log format for future entries
 
 When Nasser or a reviewer makes a decision that closes an open item, append it to §6 above as:

@@ -29,7 +29,11 @@
     </Description>
     <Authors>Nasser Towfigh</Authors>
     <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
-    <Version>0.1.0-m10</Version>
+    <!-- Dot-separated prerelease suffix — see the note in Topos.Hypergraph.csproj and
+         docs/DECISIONS.md 2026-08-03 "NUGET VERSION SCHEME CORRECTED". This package has never
+         been published (the publish workflow packs only Hypergraph/Persistence/Knowledge), so
+         the base bump is for scheme consistency rather than to clear a published version. -->
+    <Version>0.2.0-m.10</Version>
   </PropertyGroup>
 
 </Project>
