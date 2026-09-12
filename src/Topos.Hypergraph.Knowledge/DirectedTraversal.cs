@@ -60,6 +60,7 @@ public static class DirectedTraversal
     public static IReadOnlyList<Handle> DirectedShortestPath(
         this IHypergraphQuery graph, Handle from, Handle to, byte fromRole, byte toRole)
     {
+        if (!graph.ContainsVertex(from) || !graph.ContainsVertex(to)) return [];
         if (from == to) return [from];
 
         var parent = new Dictionary<Handle, Handle>();

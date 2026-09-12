@@ -105,6 +105,19 @@ public class DirectedTraversalTests
     }
 
     [Fact]
+    public void DirectedShortestPath_ReturnsEmpty_WhenFromEqualsTo_ForInvalidOrMissingHandle()
+    {
+        var (kernel, _, _, _, _, _) = BuildTwoHopChain();
+        IHypergraphQuery query = kernel;
+
+        var pathInvalid = query.DirectedShortestPath(Handle.Invalid, Handle.Invalid, AnchorRole, TargetRole);
+        Assert.Empty(pathInvalid);
+
+        var pathMissing = query.DirectedShortestPath(new Handle(99999), new Handle(99999), AnchorRole, TargetRole);
+        Assert.Empty(pathMissing);
+    }
+
+    [Fact]
     public void RoleFilteredMembers_ReturnsOnlyMembersHoldingTheRequestedRole()
     {
         var kernel = new HypergraphKernel();

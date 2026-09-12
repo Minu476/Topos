@@ -31,10 +31,9 @@ public sealed class VectorIndex(HypergraphKernel kernel, PropertyKey<float[]> em
     {
         if (k <= 0) throw new ArgumentOutOfRangeException(nameof(k), "k must be positive.");
 
-        var queryArray = query.ToArray(); // captured for the sort delegate below
         var candidates = new List<(Handle Handle, float Distance)>();
         foreach (var (handle, embedding) in kernel.EnumerateProperty(embeddingKey))
-            candidates.Add((handle, SquaredEuclideanDistance(queryArray, embedding)));
+            candidates.Add((handle, SquaredEuclideanDistance(query, embedding)));
 
         candidates.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
         return candidates.Count <= k ? candidates : candidates.GetRange(0, k);

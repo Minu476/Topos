@@ -19,7 +19,17 @@ namespace Topos.Hypergraph.Mcp;
 [McpServerToolType]
 public sealed class ToposMcpServer
 {
-    private static readonly HypergraphKernel Kernel = new();
+    private static HypergraphKernel _kernel = new();
+
+    /// <summary>Active kernel backing this MCP server instance.</summary>
+    public static HypergraphKernel Kernel => _kernel;
+
+    [McpServerTool(Name = "reset_kernel"), Description("Resets the server's hypergraph kernel to an empty state for a fresh session or test isolation.")]
+    public static string ResetKernel()
+    {
+        _kernel = new HypergraphKernel();
+        return "ok";
+    }
 
     // ── Vertices ─────────────────────────────────────────────────────────────
 
