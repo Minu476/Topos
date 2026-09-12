@@ -12,6 +12,14 @@ type; `resolve_property` dropped as its own tool; tool results are JSON-serializ
 rather than assumed to auto-serialize), and what's still open (literal agent-in-the-loop dogfood,
 pending a Claude Code restart to pick up the new `topos` entry in `.mcp.json`).
 
+**Addendum (2026-09-12):** a 19th tool, `reset_kernel`, was added by the Antigravity/Gemini fix
+session (commit `c87b6cc`) — it swaps the server's process-wide kernel for a fresh instance (session
+reset / test sandboxing without a host restart) and is paired with a public mutable
+`ToposMcpServer.Kernel` property. Nasser blessed it as documented scope the same day; the decision
+record, rationale (single-session design makes the swap race-free; destructive-by-design accepted
+for v1), and the `DirectedBfs` guard-fix from the same review live in `docs/DECISIONS.md`'s
+2026-09-12 entry. Tool count: 19.
+
 The rest of this document is preserved as originally authored — the proposal, its evidence, and
 its (now-resolved) open forks — as the design record. Don't read the 🟡/PROPOSED framing below as
 current status; the header above is authoritative.

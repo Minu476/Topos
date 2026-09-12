@@ -20,11 +20,13 @@ public static class DirectedTraversal
     /// Breadth-first traversal from <paramref name="start"/>: follows only hyperedges where the
     /// current frontier vertex holds <paramref name="fromRole"/>, landing on that edge's
     /// <paramref name="toRole"/> members. Returns the visited set in discovery order, including
-    /// <paramref name="start"/> itself.
+    /// <paramref name="start"/> itself; empty if <paramref name="start"/> was never allocated —
+    /// the same convention as the kernel's <c>GetBfs</c> and <see cref="DirectedShortestPath"/>.
     /// </summary>
     public static IReadOnlyList<Handle> DirectedBfs(
         this IHypergraphQuery graph, Handle start, byte fromRole, byte toRole)
     {
+        if (!graph.ContainsVertex(start)) return [];
         var visited = new HashSet<Handle> { start };
         var queue = new Queue<Handle>();
         queue.Enqueue(start);

@@ -14,6 +14,9 @@ namespace Topos.Hypergraph.Mcp.Tests;
 /// All tests share one process-wide <c>HypergraphKernel</c> (the stateful-single-session design,
 /// spec §5 fork (a)) via <see cref="ToposMcpServer"/>'s static field — each test creates its own
 /// fresh vertices rather than asserting on absolute counts, so tests stay order-independent.
+/// <see cref="ResetKernel_SwapsInAFreshKernel_OldVerticesUnresolvable"/> resets that shared
+/// kernel mid-suite; this stays order-safe for the same reason — no other test depends on a
+/// vertex created by a previous test.
 /// </summary>
 public class ToposMcpServerTests
 {
@@ -186,6 +189,22 @@ public class ToposMcpServerTests
         var components = Deserialize<string[][]>(ToposMcpServer.ConnectedComponents());
 
         Assert.Contains(components, c => c.Contains(isolated));
+    }
+
+    [Fact]
+    public void ResetKernel_SwapsInAFreshKernel_OldVerticesUnresolvable()
+    {
+        var created = Deserialize<VertexInfo>(ToposMcpServer.CreateVertex()).Handle;
+        Assert.NotEqual("null", ToposMcpServer.GetVertex(created));
+
+        Assert.Equal("ok", ToposMcpServer.ResetKernel());
+
+        // The wipe is real: the pre-reset handle no longer resolves in the swapped-in kernel.
+        Assert.Equal("null", ToposMcpServer.GetVertex(created));
+
+        // The fresh kernel is live: new vertices work (later tests rely on exactly this).
+        var fresh = Deserialize<VertexInfo>(ToposMcpServer.CreateVertex()).Handle;
+        Assert.NotEqual("null", ToposMcpServer.GetVertex(fresh));
     }
 
     private static T Deserialize<T>(string json) =>

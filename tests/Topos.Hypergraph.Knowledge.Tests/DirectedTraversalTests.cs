@@ -71,6 +71,16 @@ public class DirectedTraversalTests
     }
 
     [Fact]
+    public void DirectedBfs_ReturnsEmpty_ForInvalidOrMissingHandle()
+    {
+        var (kernel, _, _, _, _, _) = BuildTwoHopChain();
+        IHypergraphQuery query = kernel;
+
+        Assert.Empty(query.DirectedBfs(Handle.Invalid, AnchorRole, TargetRole));
+        Assert.Empty(query.DirectedBfs(new Handle(99999), AnchorRole, TargetRole));
+    }
+
+    [Fact]
     public void DirectedShortestPath_ReconstructsFullPath_AcrossMultipleHops()
     {
         var (kernel, a, b, c, _, _) = BuildTwoHopChain();

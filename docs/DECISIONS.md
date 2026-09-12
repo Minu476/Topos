@@ -873,6 +873,31 @@ In priority order:
 - **Not done here:** republishing to NuGet under the new versions (a separate, permanent action
   requiring an explicit go-ahead), and unlisting the mis-ordered `0.1.0-m*` versions.
 
+### 2026-09-12 — MCP `reset_kernel` blessed as documented scope (19th tool); `DirectedBfs` handle-validation gap closed
+
+- **Decider:** Nasser, after a post-hoc review by GLM-5.2 (ZCode) of the Antigravity/Gemini fix
+  commit (`c87b6cc`).
+- **Question:** `c87b6cc` bundled a 19th MCP tool — `reset_kernel`, swapping the server's static
+  kernel for a fresh instance, plus a public mutable `ToposMcpServer.Kernel` property — inside a
+  "fix" commit, with no decision record, no test, and no doc update. The review also found the
+  commit fixed `DirectedShortestPath`'s missing-handle bug but missed the identical bug in its
+  sibling `DirectedBfs` (invalid start returned a one-element bogus path instead of the kernel's
+  empty-result convention).
+- **Decision:** Bless `reset_kernel` as tool #19 (the mutable `Kernel` property stays too). In the
+  same session, per Nasser's instruction: `DirectedBfs` got the same `ContainsVertex` guard +
+  regression test, `ResetKernel` got a unit test (wipe verified, fresh kernel live), and the tool
+  count is corrected everywhere (18→19) with this entry as the record.
+- **Rationale:** Session reset / test sandboxing without a host restart is a real single-session
+  workflow need; the reference swap is atomic and M10's stateful-single-session design makes races
+  a non-issue (an in-flight call during reset simply finishes on the old kernel). The destructive
+  surface — any connected agent can wipe the graph, no confirmation — is accepted as intended v1
+  behavior; add a confirmation gate only if multi-session or production use ever demands it.
+- **What it changes:** `src/Topos.Hypergraph.Mcp/ToposMcpServer.cs` (committed in `c87b6cc`);
+  `src/Topos.Hypergraph.Knowledge/DirectedTraversal.cs` + both test files + `AGENTS.md` /
+  `README.md` / `docs/SPECIFICATION.md` / `docs/Documentation.md` / `docs/MCP_SERVER_SPEC.md` /
+  this file (this session). Historical "18 tools" statements inside the frozen M10 record and the
+  2026-07-27 dogfood log are left as history; the parentheticals elsewhere carry the change.
+
 ---
 
 ## 7. Decision log format for future entries

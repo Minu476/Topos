@@ -86,7 +86,7 @@ Three packages: `[verified:src=src/Topos.Hypergraph/Topos.Hypergraph.csproj]`
 | `Topos.Hypergraph` | The kernel + algorithms (storage contract, BFS/DFS, views, embeddings, learnable edges, analytics). | **Yes** — everything depends on this. |
 | `Topos.Hypergraph.Persistence` | Save/load a kernel to/from disk (`HypergraphSnapshot`). | Only if you need persistence. |
 | `Topos.Hypergraph.Knowledge` | Layer-1 role-aware directed traversal (`DirectedBfs`, `RoleFilteredMembers`, `AddIncidence<TRole>`). | Only if your domain has directed/role-gated semantics. |
-| `Topos.Hypergraph.Mcp` | A Model Context Protocol server exposing the kernel's API as 18 agent-callable tools (M10). Lets any MCP-aware agent (Claude Code, Cursor, Continue, ZCode) create vertices, build n-ary hyperedges, and query traversals without writing C#. | Only if you want agents to drive Topos. See [§6](#6-mcp-server-agent-tool-calling). |
+| `Topos.Hypergraph.Mcp` | A Model Context Protocol server exposing the kernel's API as 19 agent-callable tools (M10; 18 at launch, `reset_kernel` added 2026-09-12). Lets any MCP-aware agent (Claude Code, Cursor, Continue, ZCode) create vertices, build n-ary hyperedges, and query traversals without writing C#. | Only if you want agents to drive Topos. See [§6](#6-mcp-server-agent-tool-calling). |
 
 ---
 
@@ -1753,14 +1753,14 @@ project's `.mcp.json`):
 `[verified:src=samples/Topos.Samples.McpAgent/.mcp.json.example]`
 `[verified:src=samples/Topos.Samples.McpAgent/README.md]`
 
-Then restart your agent. It discovers the 18 tools automatically via MCP's `tools/list` and can
+Then restart your agent. It discovers the 19 tools automatically via MCP's `tools/list` and can
 call them via `tools/call`.
 
 > **Build first:** `dotnet build src/Topos.Hypergraph.Mcp -c Release` from the repo root before
 > the agent first spawns it (the `--no-build` flag assumes a built binary).
 > `[verified:src=samples/Topos.Samples.McpAgent/README.md:9]`
 
-### 6.3 The 18 tools
+### 6.3 The 19 tools
 
 Each is a `[McpServerTool]` method on `ToposMcpServer`, wrapping the cited primitive. Tool names
 use `snake_case` (MCP convention); parameters are JSON.
@@ -1821,6 +1821,12 @@ throw `ArgumentException`. `[verified:src=src/Topos.Hypergraph.Mcp/TypeMapping.c
 | Tool | Wraps | Source |
 |---|---|---|
 | `semantic_recall` | `VectorIndex.NearestNeighbors` — exact k-NN over a named embedding property | `[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:187-193]` `[verified:src=src/Topos.Hypergraph/VectorIndex.cs:30-41]` |
+
+#### Session (added 2026-09-12)
+
+| Tool | Wraps | Source |
+|---|---|---|
+| `reset_kernel` | Swaps the server's process-wide kernel for a fresh, empty instance — session reset / test sandboxing without restarting the host process. **Destructive: wipes every vertex/edge/property; no confirmation.** Returns `"ok"`. | `[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs:22-31]` `[verified:docs=docs/DECISIONS.md — 2026-09-12 blessing entry]` |
 
 ### 6.4 A worked example: agent builds and queries a hyperedge
 

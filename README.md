@@ -157,7 +157,8 @@ deferred pending a forcing consumer or a decision to go public — not in progre
   a pattern three independent consumers (ChatMemory, RLB, NexusVerifier) had each hand-rolled. Exit
   criterion met: RLB's `ToposGraphProjection` now calls into it instead of its own copy.
 - **M10** — `Topos.Hypergraph.Mcp` package: a Model Context Protocol server exposing the kernel and
-  `Topos.Hypergraph.Knowledge` as 18 agent-callable tools (Microsoft's official `ModelContextProtocol`
+  `Topos.Hypergraph.Knowledge` as 19 agent-callable tools — 18 at launch, plus `reset_kernel` added
+  and blessed 2026-09-12 (Microsoft's official `ModelContextProtocol`
   C# SDK, stdio transport, stateful single-session). See `docs/MCP_SERVER_SPEC.md` for the design
   and `docs/DECISIONS.md`'s "M10 APPROVED AND IMPLEMENTED" entry for the build record.
 
