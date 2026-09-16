@@ -601,7 +601,7 @@ than the file-level reading in `BASE_INVESTIGATION.md §3.8`. **Recommended read
 | Build as RLB kernel first; M5 = non-RLB second consumer | 🔒 LOCKED | `DECISIONS.md §6` |
 | Neo4j GDS as correctness oracle for standard algorithms | 🔒 LOCKED | `DECISIONS.md §6` |
 | GDS test-only isolation (GPLv3 cannot reach production binary) | 🔒 LOCKED | this doc §5.1 |
-| 4 primitives + 2 invariants | 🔒 LOCKED | `BASE_INVESTIGATION §5.1`, `DECISIONS.md §1` |
+| 4 primitives + 3 invariants | 🔒 LOCKED (3rd documented 2026-09-16 — describes M0 behavior, not a change) | `BASE_INVESTIGATION §5.1`, `DECISIONS.md §1`, `DECISIONS.md` 2026-09-16 |
 | 3-layer substrate (Knowledge / Graph / Storage) | 🔒 LOCKED | this doc §4.1 |
 | Algorithms as cross-cutting capabilities, not a top layer | 🔒 LOCKED (shape) | this doc §4.2 |
 | Cardinality/validation rules live in layer 1 (Knowledge model), not the kernel | 🔒 LOCKED | this doc §4.1 |

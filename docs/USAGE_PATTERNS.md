@@ -554,6 +554,57 @@ Worked example — a fact's epistemic status (`AssertionMode`) changing from `Hy
 
 ---
 
+## Pattern 11 — Revising a relation: supersede, don't edit
+
+A fact was asserted with the wrong participants, or a relation stopped holding. There is no
+`RemoveIncidence` — **Invariant 3: a membership, once recorded, is permanent** (see
+[`CONCEPTS.md`](CONCEPTS.md)). The kernel's line is that *properties are mutable, structure is
+append-only*, so you revise a relation the way you would revise a ledger: by writing a correcting
+entry, not by erasing the original.
+
+```csharp
+enum FactRole : byte { Subject = 1, Object = 2, Supersedes = 3 }
+
+// The original assertion, which turned out to name the wrong object.
+var original = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(original, alice, (byte)FactRole.Subject, 0);
+kernel.AddIncidence(original, acme,  (byte)FactRole.Object,  1);
+
+// Revise it: a new hyperedge with the corrected members, pointing at what it replaces.
+var corrected = kernel.CreateVertex(VertexRoles.Edge);
+kernel.AddIncidence(corrected, alice,     (byte)FactRole.Subject,    0);
+kernel.AddIncidence(corrected, initech,   (byte)FactRole.Object,     1);
+kernel.AddIncidence(corrected, original,  (byte)FactRole.Supersedes, 2);   // nested reification
+
+// Retire the original. It stays resolvable forever (Invariant 1) — retired, not erased.
+kernel.SetDormant(original);
+```
+
+Three things this buys that an in-place edit would not:
+
+- **The revision is queryable.** `Supersedes` is an ordinary role byte, so "what did this correct?"
+  and "was this ever corrected?" are one-hop walks — see [Pattern 8](#pattern-8--directed-role-aware-traversal).
+- **Nothing dangles.** Any provenance edge that referenced `original` still resolves, because
+  Invariant 1 guarantees the vertex survives dormancy.
+- **History is the default, not a feature you remember to switch on.** This is the same shape
+  [Pattern 10](#pattern-10--living-entities-timestamped-state-history)'s observation chains use, and
+  the reason they work at all.
+
+**Reading only current relations.** Dormant edge-vertices stay in the graph, so filter them out at
+the view layer rather than by convention at each call site:
+
+```csharp
+var current = HypergraphViews.Mask(kernel, h =>
+    kernel.TryGetVertex(h, out var v) && v.Status == VertexStatus.Active);
+```
+
+**The cost to know about.** Superseding accumulates: every revision adds a hyperedge and its
+incidences, and nothing is ever reclaimed (Invariant 1 again). For a long-lived graph with
+high-churn relations, that growth is real and there is no compaction pass today — snapshot and
+reload (`Pattern 7`) is the coarse reset.
+
+---
+
 ## Where to go next
 
 - **Look up a type used above** → [`API_REFERENCE.md`](API_REFERENCE.md).

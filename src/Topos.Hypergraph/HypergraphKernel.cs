@@ -5,7 +5,7 @@ namespace Topos.Hypergraph;
 
 /// <summary>
 /// M0 storage kernel: Handle allocation, the vertex table, incidence storage, and typed property
-/// pools — the four primitives and two invariants of spec §3.
+/// pools — the four primitives and three invariants of spec §3.
 ///
 /// Concurrency model (spec §3.4, Single-Writer/Multi-Reader at the kernel boundary) — revised
 /// 2026-07-24 after benchmark data, see <c>docs/M0_BENCHMARK_RESULTS_2026-07-24.md</c>:
@@ -116,6 +116,21 @@ public sealed class HypergraphKernel : IHypergraphQuery
     /// <summary>
     /// Records one membership. No existence check beyond having been allocated at some point —
     /// provenance edges always resolve, even to dormant targets (Invariant 1).
+    ///
+    /// <b>This method has no counterpart, deliberately — Invariant 3 (documented 2026-09-16,
+    /// <c>docs/DECISIONS.md</c>; behavior unchanged since M0).</b> A membership, once recorded, is
+    /// permanent: a relation can gain members, never lose one. The line the kernel draws is that
+    /// <i>properties are mutable, structure is append-only</i> — <see cref="SetProperty{T}"/>
+    /// overwrites and <see cref="RemoveProperty{T}"/> deletes, because a property is a claim about
+    /// the present, while an <see cref="Incidence"/> is a claim that a relation <i>was asserted</i>,
+    /// and revising the present must not silently rewrite that. It is the structural half of
+    /// Invariant 1: that one makes a <see cref="Handle"/> safe to hold for a long time, this one
+    /// makes an <see cref="Incidence"/> safe to hold.
+    ///
+    /// To revise a relation, supersede it rather than editing it — add the corrected hyperedge, then
+    /// <see cref="SetDormant"/> the old one. Both stay resolvable, so the revision is itself part of
+    /// the record, which is what provenance chains and <c>Topos.Hypergraph.Living</c>'s observation
+    /// chains are built on. See <c>docs/USAGE_PATTERNS.md</c> Pattern 11.
     /// </summary>
     public Incidence AddIncidence(Handle source, Handle member, byte role, int ordinal)
     {

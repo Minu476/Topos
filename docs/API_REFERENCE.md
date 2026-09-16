@@ -70,6 +70,12 @@ does not interpret it (define yours as a `byte`-backed `enum`, see [`ROLE_CONVEN
 [`USAGE_PATTERNS.md`](USAGE_PATTERNS.md) for the two workarounds if you need per-membership data.
 `[verified:src=src/Topos.Hypergraph/Incidence.cs:6-28]`
 
+**An incidence is never removed — Invariant 3.** `AddIncidence` has no counterpart: a relation can
+gain members, never lose one. Properties are mutable, structure is append-only. To revise a
+relation, supersede it (add the corrected hyperedge, mark the old one dormant) — see
+[`USAGE_PATTERNS.md`](USAGE_PATTERNS.md) Pattern 11 and [`CONCEPTS.md`](CONCEPTS.md)'s invariants
+section. `[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:135]`
+
 ### `PropertyKey<T>`
 
 Typed identity for a property. `[verified:src=src/Topos.Hypergraph/PropertyKey.cs:16-26]`

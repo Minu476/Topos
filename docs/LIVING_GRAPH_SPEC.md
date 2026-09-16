@@ -1,7 +1,9 @@
 # Topos — Living-Graph Spec (M13 proposal)
 
-**Status:** proposal, nothing built. Written 2026-09-16 by Opus 5, at Nasser's request, after an
-M12 readiness review turned up a gap M12's own scoping pass concluded too early.
+**Status:** proposal, nothing built — **except §6.5, which Nasser resolved on 2026-09-16** (incidence
+immutability is now Invariant 3; see §5.3). The other six forks are open and no code has been
+written. Authored 2026-09-16 by Opus 5, at Nasser's request, after an M12 readiness review turned up
+a gap M12's own scoping pass concluded too early.
 
 Structured deliberately like `docs/ALGORITHM_SPEC.md` (scope → layer discipline → per-item spec →
 open forks → exit criterion), because that document's shape worked: M11 shipped in two clean phases
@@ -249,18 +251,27 @@ public sealed partial class HypergraphKernel
 
 Today there is **no `RemoveIncidence`** anywhere in the kernel — `AddIncidence` has no counterpart,
 so a hyperedge's membership is grow-only: once a vertex participates in a relation, it participates
-forever. `[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:120]`
+forever. `[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:135]`
 
-This is very likely deliberate (it preserves provenance, and it composes with dormancy and with
-M12's chains into a supersede-and-tombstone idiom). **But it is nowhere documented as an
-invariant.** `CONCEPTS.md` states Invariant 1 about *vertices* — "a vertex, once created, is never
-removed" — and says nothing about incidences, so a reader reasonably concludes membership is
-editable. `[verified:docs=docs/CONCEPTS.md:126]` The M12 decision entry also lists "evolving
-hyperedge membership" among the wishlist items already covered by existing primitives, which is
-true only in the supersede sense, not literally. `[verified:docs=docs/DECISIONS.md 2026-09-06]`
+> **✅ RESOLVED 2026-09-16 (Nasser) — declared Invariant 3.** Settled ahead of the rest of this
+> spec, since it fixes the vocabulary a change feed needs. "An incidence is never removed" is now
+> documented beside the other two invariants in `CONCEPTS.md` / `Documentation.md` §2.3, pinned by
+> `InvariantTests.NoIncidenceRemovalExists` (a reflection test that fails if a removal method is
+> ever added, so the decision is revisited deliberately rather than eroded), and the
+> supersede-and-tombstone idiom is written up as `USAGE_PATTERNS.md` Pattern 11. Zero code changed —
+> it describes behavior the kernel has had since M0. See `docs/DECISIONS.md` 2026-09-16.
 
-See §6.5. Whichever way it goes, the outcome is a documented invariant and, if removal is admitted,
-one more `ChangeKind`.
+**Why it needed deciding.** The behavior was very likely deliberate (it preserves provenance, and it
+composes with dormancy and with M12's chains), but it was nowhere documented: `CONCEPTS.md` stated
+Invariant 1 about *vertices* — "a vertex, once created, is never removed" — and said nothing about
+incidences, so a reader reasonably concluded membership was editable. The M12 decision entry also
+listed "evolving hyperedge membership" among the wishlist items already covered by existing
+primitives, which is true only in the supersede sense, not literally.
+`[verified:docs=docs/DECISIONS.md 2026-09-06]`
+
+**Consequence for this spec:** the change feed's vocabulary is now closed on the structural side.
+`ChangeKind` needs `IncidenceAdded` and no removal counterpart, and §5.2's enum as written is
+correct rather than provisional.
 
 ---
 
@@ -322,6 +333,9 @@ naming question and the packaging question are separable, and only the second on
 rest of the design leans on, and it is a documentation fix rather than an architectural change. But
 this is exactly the kind of call that should be *made* rather than inherited by default, which is
 why it is here and not assumed.
+
+> **✅ RESOLVED 2026-09-16 (Nasser) — (a).** The only fork in this spec that is closed; the other six
+> remain open. Full record in §5.3 above and in `docs/DECISIONS.md` 2026-09-16.
 
 ### 6.6 Does `RestoreVertex` bump the revision?
 

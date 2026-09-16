@@ -1045,6 +1045,51 @@ In priority order:
   for nodes and edges, so the two models genuinely differ there; `HnxExport` throws rather than
   exporting something HNX would quietly reinterpret.
 
+### 2026-09-16 — INVARIANT 3 DECLARED: an incidence is never removed
+
+- **Decider:** Nasser, executed by Opus 5 in the same session. Closes `LIVING_GRAPH_SPEC.md` §6.5 —
+  the first and so far only resolved fork in the M13 proposal.
+- **Question:** the kernel has no `RemoveIncidence`; `AddIncidence` has no counterpart, so a
+  hyperedge's membership is grow-only. Found while reviewing whether `Topos.Hypergraph.Living` is
+  ready to build on. **Nothing said whether that was a deliberate constraint or an unbuilt feature.**
+  `CONCEPTS.md` stated Invariant 1 about *vertices* only ("a vertex, once created, is never
+  removed") and said nothing about incidences, so a reader reasonably concluded membership was
+  editable. The M12 entry above also lists "evolving hyperedge membership" among the wishlist items
+  already covered by existing primitives — true only in the supersede-and-tombstone sense, not
+  literally. The ambiguity had to be settled before M13's change-feed vocabulary could be fixed,
+  because a feed must be able to express every kind of change the graph admits.
+- **Decision:** declare it. **Invariant 3 — an incidence is never removed.** A membership, once
+  recorded, is permanent: a relation can gain members, never lose one. **Zero code changed** — this
+  documents behavior the kernel has had since M0, it does not alter it.
+- **Rationale:** it matches what the code already does, and the property it protects is load-bearing
+  for everything above it. Invariant 1 makes a `Handle` safe to hold for a long time; Invariant 3 is
+  its structural half, making an `Incidence` safe to hold — a membership read yesterday still
+  describes the graph today. The line the kernel draws is now stateable in one sentence:
+  **properties are mutable, structure is append-only.** `SetProperty` overwrites and `RemoveProperty`
+  deletes because a property is a claim about the present; an `Incidence` is a claim that a relation
+  *was asserted*, and revising the present must not silently rewrite that. Option (b) — adding
+  `RemoveIncidence` — would have reopened a storage-contract question the architecture treats as
+  closed, and would have made provenance edges and `Living`'s observation chains conditional rather
+  than guaranteed.
+- **What it changes:** `docs/CONCEPTS.md` and `docs/Documentation.md` §2.3 ("The two invariants" →
+  "The three invariants", plus the Invariant 3 section); `docs/SPECIFICATION.md`'s locked-decision
+  table row (`4 primitives + 2 invariants` → `+ 3`, amended-with-date, following the same convention
+  the 2026-07-24 concurrency amendment used); `docs/USAGE_PATTERNS.md` **Pattern 11 — Revising a
+  relation: supersede, don't edit** (new: the sanctioned idiom, what it buys, how to read only
+  current relations, and the accumulation cost it carries); `docs/API_REFERENCE.md`'s `Incidence`
+  section; `HypergraphKernel`'s class doc and `AddIncidence`'s XML doc;
+  `docs/LIVING_GRAPH_SPEC.md` §5.3/§6.5 marked resolved. Two new tests in `InvariantTests` —
+  `NoIncidenceRemovalExists` (reflection: fails if a removal-shaped method is ever added, so the
+  invariant is revisited deliberately rather than eroded in a routine change) and
+  `Membership_SurvivesDormancyOfEveryParticipant` (the operational consequence: superseding never
+  destroys the original membership). Suite 298 → 300.
+- **Historical statements left as history**, per the convention the 2026-09-12 entry established:
+  `SPECIFICATION.md`'s "The 2 invariants enforced" in the frozen M0 milestone row and its
+  "four-primitive + two-invariant shape" origin note, and `ALGORITHM_SPEC.md` §4's "or the two
+  invariants" — all were accurate when written. The live statements carry the change.
+- **What's still open:** the other six forks in `LIVING_GRAPH_SPEC.md` §6, and the M13 proposal
+  itself, which remains unapproved and unbuilt.
+
 ---
 
 ## 7. Decision log format for future entries

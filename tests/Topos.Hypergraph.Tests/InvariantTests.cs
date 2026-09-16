@@ -79,4 +79,44 @@ public class InvariantTests
         Assert.True(kernel.TryGetVertex(h, out var v));
         Assert.Equal(h, v.Handle);
     }
+
+    [Fact]
+    public void NoIncidenceRemovalExists()
+    {
+        // Invariant 3, pinned by absence. The kernel offers no way to withdraw a membership --
+        // AddIncidence has no counterpart -- and that is a decision (docs/DECISIONS.md 2026-09-16,
+        // docs/CONCEPTS.md "Invariant 3"), not an omission waiting to be filled in. Asserting it
+        // here means adding one trips a failing test and forces the decision to be revisited
+        // deliberately, rather than the invariant eroding in a routine PR.
+        var removalLike = typeof(HypergraphKernel)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Where(m => m.Name.Contains("Incidence", StringComparison.Ordinal))
+            .Where(m => m.Name.StartsWith("Remove", StringComparison.Ordinal)
+                     || m.Name.StartsWith("Delete", StringComparison.Ordinal)
+                     || m.Name.StartsWith("Detach", StringComparison.Ordinal)
+                     || m.Name.StartsWith("Clear", StringComparison.Ordinal))
+            .Select(m => m.Name)
+            .ToList();
+
+        Assert.Empty(removalLike);
+    }
+
+    [Fact]
+    public void Membership_SurvivesDormancyOfEveryParticipant()
+    {
+        // The operational consequence: superseding a relation (tombstone the old hyperedge, add a
+        // corrected one) never destroys the original membership -- it stays readable from both
+        // directions, which is what makes the supersede idiom a record rather than a deletion.
+        var kernel = new HypergraphKernel();
+        var member = kernel.CreateVertex();
+        var edge = kernel.CreateVertex(VertexRoles.Edge);
+        kernel.AddIncidence(edge, member, role: 3, ordinal: 0);
+
+        kernel.SetDormant(edge);
+        kernel.SetDormant(member);
+
+        Assert.Single(kernel.IncidencesFrom(edge));
+        Assert.Equal(member, kernel.IncidencesFrom(edge)[0].Member);
+        Assert.Single(kernel.IncidencesOf(member));
+    }
 }

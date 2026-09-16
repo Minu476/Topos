@@ -116,9 +116,9 @@ array, not a scatter-read across vertices. `[verified:docs=docs/SPECIFICATION.md
 
 ---
 
-## The two invariants
+## The three invariants
 
-The four primitives are governed by two invariants. These are not conventions — they are rules the
+The four primitives are governed by three invariants. These are not conventions — they are rules the
 kernel enforces, and your code can rely on them. `[verified:docs=docs/SPECIFICATION.md §3]`
 
 ### Invariant 1 — dormant is never garbage-collected
@@ -141,6 +141,31 @@ hyperedge has a layer-level `Incidence.Role` byte (your domain's meaning). **The
 A vertex tagged `VertexRoles.Edge` (itself a reified hyperedge) can participate as a member of
 another hyperedge under any role byte — that's how nested reification works (see
 [`USAGE_PATTERNS.md`](USAGE_PATTERNS.md)). `[verified:docs=docs/SPECIFICATION.md §3]`
+
+### Invariant 3 — an incidence is never removed
+
+> A vertex's membership in a hyperedge, once recorded, is permanent. `AddIncidence` has no
+> counterpart: a relation can gain members, it can never lose one.
+
+The operational consequence: **a hyperedge is a record of a relation as it was asserted, not a
+mutable container.** This is the structural half of Invariant 1. Invariant 1 makes a `Handle` safe
+to hold for a long time; Invariant 3 makes an `Incidence` safe to hold — a membership you read
+yesterday still describes the graph today.
+
+The line it draws is worth stating plainly: **properties are mutable, structure is append-only.**
+`SetProperty` overwrites and `RemoveProperty` deletes, because a property is a claim about the
+present. An `Incidence` is a claim that a relation *was asserted*, and revising the present must not
+silently rewrite that. `[verified:src=src/Topos.Hypergraph/HypergraphKernel.cs:135]`
+
+To revise a relation, **supersede it rather than edit it**: create the corrected hyperedge, then
+mark the old one `Dormant`. Both stay resolvable (Invariant 1), so the revision is itself part of
+the record — which is exactly what makes provenance chains and `Topos.Hypergraph.Living`'s
+observation chains work at all. See [`USAGE_PATTERNS.md`](USAGE_PATTERNS.md) Pattern 11.
+
+This invariant is enforced by absence — there is no API that could violate it — and pinned by
+`InvariantTests.NoIncidenceRemovalExists`, which fails if one is ever added, so the decision gets
+revisited deliberately rather than eroded. Documented 2026-09-16 (`docs/DECISIONS.md`); it describes
+behavior the kernel has had since M0, not a change.
 
 ---
 
