@@ -103,9 +103,9 @@ implementations of the same cited definition.
 
 Mirror the existing GDS-oracle pattern (`tests/Topos.Tests.GdsOracle/`):
 
-- **New project:** `tests/Topos.Tests.HnxOracle/` — a .NET test project that drives HNX over a
-  subprocess (or a Docker sidecar `topos-hnx-oracle`, Python 3.10+, `pip install hypergraphx` —
-  wait, HNX: `pip install hypergraphx` is wrong; it's `pip install hypernetx`).
+- **New project:** `tests/Topos.Tests.HnxOracle/` — a .NET test project that drives HNX from a
+  disposable `topos-hnx-oracle` container (`python:3.11-slim`, `pip install hypernetx xgi`), with a
+  documented local-interpreter fallback. **Built 2026-09-16; see `docs/HNX_ORACLE_SETUP.md`.**
 - **Same soft-fail convention as GDS-oracle:** if the HNX sidecar isn't reachable, tests skip
   gracefully (pass trivially), so the suite never breaks CI or another developer's machine.
   `[verified:src=tests/Topos.Tests.GdsOracle — Neo4jTestConfig.TryLoad() soft-fail pattern]`
@@ -152,9 +152,15 @@ public partial interface IHypergraphQuery
     /// (<c>tests/Topos.Tests.HnxOracle</c>) verifies against HNX's <c>s_connected_components</c>.
     /// Built on the existing <see cref="SWalk"/> adjacency — no new storage.
     /// </summary>
-    IReadOnlyList<IReadOnlyList<Handle>> GetSConnectedComponents(int s = 1);
+    IReadOnlyList<IReadOnlyList<Handle>> GetSConnectedComponents(int s = 1, SDomain domain = SDomain.Vertices);
 }
 ```
+
+> **Resolved 2026-09-16 — this section contradicted itself.** The prose and signature above define
+> the partition over **vertices** (sharing ≥ s hyperedges); the implementation note below says to
+> reuse `SWalk`, which is the **hyperedge** dual (sharing ≥ s vertices). HNX's oracle defaults to the
+> edge reading. Both shipped, behind the `SDomain` parameter shown, defaulted to `Vertices` so this
+> section's own call shape and its §4.5 reduction anchor still hold. See `docs/DECISIONS.md`.
 
 - **Implementation:** derive the s-adjacency (two vertices adjacent iff they share ≥ s hyperedges —
   reuse `SWalk`'s existing pairwise-incidence logic), then standard union-find or BFS over that
@@ -180,9 +186,15 @@ public partial interface IHypergraphQuery
     /// (handle → neighboring hyperedge handles).
     /// HNX + xgi cross-check oracle.
     /// </summary>
-    IReadOnlyDictionary<Handle, IReadOnlyList<Handle>> GetSLineGraph(int s = 1);
+    IReadOnlyDictionary<Handle, IReadOnlyList<Handle>> GetSLineGraph(int s = 1, SDomain domain = SDomain.Hyperedges);
 }
 ```
+
+> **As built (2026-09-16):** the `SDomain` default here is `Hyperedges`, matching this section's own
+> "nodes are this hypergraph's hyperedges" — so it differs from §5.1's and §5.3's default. Each
+> method's default is the domain its own section defines. `SDomain.Vertices` gives HNX's
+> `get_linegraph(edges=False)` dual, which is the adjacency §5.1/§5.3 run over; exposing it is what
+> makes that derivation directly oracle-checkable rather than checkable only through its results.
 
 - **Implementation:** for each pair of hyperedges, count shared members; link if ≥ s. O(E² · avg-members).
 - **Oracle:** HNX `get_linegraph(s=)` **and** xgi `to_line_graph(H, s=1)` — two independent
@@ -202,9 +214,21 @@ public partial interface IHypergraphQuery
     /// s-adjacency. Built on <see cref="SWalk.Distance"/> generalized to s≥1.
     /// HNX oracle (<c>diameter</c>/<c>edge_diameter</c>).
     /// </summary>
-    int? GetSDiameter(int s = 1);
+    int? GetSDiameter(int s = 1, SDomain domain = SDomain.Vertices);
+    int? GetSEccentricity(Handle of, int s = 1, SDomain domain = SDomain.Vertices);
+    int? GetSDistance(Handle from, Handle to, int s = 1, SDomain domain = SDomain.Vertices);
 }
 ```
+
+> **As built (2026-09-16).** Two additions and one deliberate divergence.
+> `GetSEccentricity` is named in this section's *title* but was given no signature;
+> `GetSDistance` is the distance function the other two are aggregations of, and both have direct
+> HNX oracles, so each adds verification rather than only surface.
+> **The divergence:** HNX's `diameter`/`edge_diameter`/`s_eccentricity` *raise* unless the whole
+> hypergraph is s-connected (they defer to NetworkX's whole-graph functions), while the definition
+> above — "the maximum s-distance over all reachable pairs" — stays defined on every input. Topos
+> implements this section; `tests/Topos.Tests.HnxOracle` asserts parity where HNX answers **and**
+> HNX's refusal where it does not, so the difference is pinned rather than drifting.
 
 - **Implementation:** pairwise `SWalk.Distance` max, or BFS from every vertex over the s-adjacency.
 - **Oracle:** HNX `diameter(s=)` / `edge_diameter(s=)`.
@@ -376,6 +400,16 @@ options for `tests/Topos.Tests.HnxOracle`:
 **Recommend (a)** for parity with the GDS-oracle discipline and the documented isolation concerns
 (`docs/GDS_ORACLE_SETUP.md`).
 
+> **✅ RESOLVED 2026-09-16 (Nasser) — (a), with (b) as a documented escape hatch.** Building it
+> showed the fork is softer than it reads: HNX is a library with no server, so there is nothing to
+> be a *sidecar* to — each request runs a worker process that then exits. (a) and (b) are therefore
+> the same code path with the interpreter located differently, so both are supported at no real
+> cost: `TOPOS_HNX_ORACLE_IMAGE` and `TOPOS_HNX_ORACLE_PYTHON`, mirroring `Neo4jTestConfig`'s
+> env-var shape. The container is the default, and the argument for it is **attribution** (a pinned
+> interpreter and pinned library versions make "Topos agrees with HNX" a statement about a specific
+> HNX) rather than the isolation argument that drives the GDS container. See
+> `docs/HNX_ORACLE_SETUP.md` and `docs/DECISIONS.md`.
+
 ### 6.2 Which modularity definition? (only if §5.7 is in scope)
 
 Three peer-reviewed, mutually-inconsistent definitions:
@@ -411,7 +445,9 @@ consumer asks. This keeps the kernel's "role-blind, symmetric" discipline intact
 Mirrors M9's falsifiable-gate discipline: **two real consumers exercise the new surface.**
 
 1. **All MUST items implemented and GDS- or HNX-verified** (parity tests pass when oracles
-   reachable; skip-graceful when not).
+   reachable; skip-graceful when not). **✅ Met 2026-09-16.** Phase 1's three GDS items landed
+   2026-07-30/08-03; phase 2's three HNX items landed 2026-09-16 with every parity test run *live*
+   against HyperNetX 2.4.3 and xgi 0.10.2, not skipped.
 2. **RLB's `ToposGraphProjection`** gains a use of at least one new API (e.g. PageRank for
    landmark importance, or Directed SCC for transition-cycle detection) — proves the API is real,
    not theoretical. RLB's 346-test suite passes unchanged.
@@ -419,6 +455,7 @@ Mirrors M9's falsifiable-gate discipline: **two real consumers exercise the new 
    `DirectedScc` — the M9-forcing-evidence pattern repeated: a real consumer drops its parallel
    copy in favor of Topos's generic implementation.
 4. **177 → N test count grows** with the new algorithm tests; the full Topos test suite passes.
+   **✅ Met:** 177 → 229 (phase 1) → 251 (M12 and fixes) → **298** (phase 2), full suite green.
 5. **HIF (if scoped)** round-trips against xgi/HNX.
 
 ---

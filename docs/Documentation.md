@@ -5,9 +5,10 @@
 > (`SPECIFICATION.md`, `DECISIONS.md`) lives separately — this is the user manual.
 >
 > **Status:** M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done ·
-> M9 implemented · M10 (MCP server) implemented · M11 phase 1 implemented (Centrality/PageRank/
-> Directed SCC, GDS-verified against a live instance; phase 2 — s-connected-components/s-line-graph/
-> s-diameter — not yet scheduled). 233 tests pass. License: **MIT** (decided 2026-07-26). NuGet
+> M9 implemented · M10 (MCP server) implemented · M11 implemented in full — phase 1
+> (Centrality/PageRank/Directed SCC, GDS-verified against a live instance) and phase 2
+> (s-connected-components/s-line-graph/s-diameter/s-eccentricity, verified against live HyperNetX
+> and xgi). 298 tests pass. License: **MIT** (decided 2026-07-26). NuGet
 > packages (`Topos.Hypergraph`, `Topos.Hypergraph.Persistence`, `Topos.Hypergraph.Knowledge`) are
 > published — see [§1 Installation](#1-installation) for the current state.
 
@@ -1048,6 +1049,47 @@ Returns `0.0` for an edgeless graph. **Asymmetry to know:** vertices missing fro
 excluded from the internal-edges numerator but grouped into a synthetic community (key `-1`) for the
 degree-sum-of-squares penalty — so omitting vertices can only push Q down, never up. Pass a partition
 covering every vertex for a meaningful score. `[verified:src=src/Topos.Hypergraph/Modularity.cs:15-28]`
+
+#### `SDomain` and the s-connectivity family
+
+M11 phase 2 — s-connected components, the s-line-graph, and s-distance/eccentricity/diameter.
+`[verified:src=src/Topos.Hypergraph/IHypergraphQuery.SConnectivity.cs]`
+
+```csharp
+public enum SDomain { Vertices, Hyperedges }
+
+// default interface methods on IHypergraphQuery (which is `partial`):
+IReadOnlyList<IReadOnlyList<Handle>> GetSConnectedComponents(int s = 1, SDomain domain = SDomain.Vertices);
+IReadOnlyDictionary<Handle, IReadOnlyList<Handle>> GetSLineGraph(int s = 1, SDomain domain = SDomain.Hyperedges);
+int? GetSDistance(Handle from, Handle to, int s = 1, SDomain domain = SDomain.Vertices);
+int? GetSEccentricity(Handle of, int s = 1, SDomain domain = SDomain.Vertices);
+int? GetSDiameter(int s = 1, SDomain domain = SDomain.Vertices);
+```
+
+**s-adjacency is two relations, not one.** On `SDomain.Vertices`, two vertices are s-adjacent when
+they are co-members of ≥ `s` common hyperedges. On `SDomain.Hyperedges`, two hyperedges are
+s-adjacent when they share ≥ `s` common member vertices — `SWalk`'s relation. Raising `s` is a
+strictly stricter threshold, so components only ever split as `s` grows and distances only ever
+lengthen; that is the whole point of the parameter.
+
+**The defaults differ per method on purpose** — each is the domain that method's specification
+defines (`ALGORITHM_SPEC.md` §5.1-5.3). Pass `domain:` explicitly when it matters.
+
+Three behaviors worth knowing before you compare results with another library:
+
+- **`SDomain.Vertices`'s node set excludes handles that belong to no hyperedge** — they have no
+  s-adjacency at any `s`. `SDomain.Hyperedges` keeps every hyperedge, including one too small to be
+  s-adjacent to anything, which shows up as an isolated node.
+- **Singleton components are returned.** HyperNetX's `s_connected_components` drops them by default.
+- **`GetSDiameter`/`GetSEccentricity` answer on disconnected hypergraphs**, maximizing over the
+  pairs that *are* s-connected; HNX raises instead. `GetSDiameter` returns `null` only when no two
+  distinct nodes are s-connected.
+
+Neo4j GDS structurally cannot verify any of this — "shares ≥ `s` members" has no meaning in a binary
+projection. Verification is `ALGORITHM_GAP_LIST.md` §3's ladder instead: differential parity against
+HyperNetX **and** xgi, metamorphic properties, hand-computed goldens, and reduction anchors pinning
+`s=1` onto the GDS-verified `GetConnectedComponents`/`GetShortestPathLength` and the hyperedge domain
+onto `SWalk`. See `docs/HNX_ORACLE_SETUP.md`.
 
 #### `Centrality`
 

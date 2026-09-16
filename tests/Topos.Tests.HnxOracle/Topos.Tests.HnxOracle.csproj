@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Topos.Tests.HnxOracle</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Compiled from the unit-test project rather than copied. The in-process golden tests and
+         these parity tests have to be talking about the *same* hypergraphs for a disagreement
+         between them to mean anything; a second copy of the fixtures would let them drift apart
+         silently and turn a real contradiction into a shrug. -->
+    <Compile Include="..\Topos.Hypergraph.Tests\SFixtures.cs" Link="SFixtures.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The worker is mounted into the container (or handed to a local interpreter) from the test
+         output directory, so it has to land there. -->
+    <None Include="hnx_oracle.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

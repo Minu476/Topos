@@ -54,7 +54,12 @@ namespace Topos.Hypergraph;
 /// role-gated search (e.g. <c>DirectedBfs(start, roleFilter)</c>) is its most obvious candidate,
 /// precisely because two unrelated consumers already needed the same thing.
 /// </summary>
-public interface IHypergraphQuery
+// M11 phase 2's s-connectivity family (`docs/ALGORITHM_SPEC.md` §5.1-5.3) is declared in
+// IHypergraphQuery.SConnectivity.cs rather than here — same interface, kept in its own file
+// because this one is already the kernel's densest, and the s-family is a self-contained addition
+// with its own oracle project. The spec's own §5.1-5.3 code blocks write it as
+// `public partial interface IHypergraphQuery`, which is what made this declaration partial.
+public partial interface IHypergraphQuery
 {
     // ── Required primitives ─────────────────────────────────────────────────
 

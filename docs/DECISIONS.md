@@ -900,6 +900,101 @@ In priority order:
 
 ---
 
+### 2026-09-16 — M11 PHASE 2 IMPLEMENTED: s-connected-components, s-line-graph, s-diameter; HNX/xgi oracle stood up
+
+- **Decider:** Nasser, executed by Opus 5 in the same session. Closes the remaining three items of
+  `ALGORITHM_GAP_LIST.md` §2's six-item must-have shortlist, left open by the 2026-07-30 phase 1
+  entry ("M11 phase 2 ... needs the HNX oracle project scoped in spec §3.1/§6.1, not started").
+- **Question:** four things needed deciding or resolving before this could ship.
+  1. **`ALGORITHM_SPEC.md` §6.1 (never formally decided — the only §6 fork without an entry):**
+     Docker sidecar or Python subprocess for the HNX oracle?
+  2. **An unflagged contradiction inside the spec, found while executing it:** §5.1's signature and
+     its §4.5 reduction anchor define s-connected-components over **vertices** ("two vertices ...
+     pairwise sharing ≥ s hyperedges", "s=1 reduces to `GetConnectedComponents`"), while its own
+     implementation note says "reuse `SWalk`", and `SWalk` is **hyperedge**-based (two hyperedges
+     sharing ≥ s vertices). These are duals, not the same computation; HNX's oracle defaults to the
+     edge reading. §5.3's `GetSDiameter` carries the identical split (HNX `diameter` vs
+     `edge_diameter`). Picking one silently would have been a wrong-by-definition bug of exactly
+     the kind the task brief warned this work is prone to.
+  3. **A semantic divergence from the oracle, found by probing HNX rather than reading about it:**
+     HNX's `diameter`/`edge_diameter`/`s_eccentricity` *raise* unless the whole hypergraph is
+     s-connected, where §5.3 asks for "the maximum s-distance over all reachable pairs."
+  4. Version-control handling, given ~489 lines of uncommitted M12 `Living` work already in the tree.
+- **Decision:**
+  1. **Docker by default, with a documented local-interpreter escape hatch** —
+     `TOPOS_HNX_ORACLE_IMAGE` / `TOPOS_HNX_ORACLE_PYTHON`, mirroring `Neo4jTestConfig`'s existing
+     env-var-driven shape. §6.1's fork turned out to be softer than it reads: HNX is a library with
+     no server, so there is nothing to be a *sidecar* to, and the two options are one code path with
+     the interpreter located differently. Both are verified working.
+  2. **Both domains ship**, behind an `SDomain` parameter defaulted per method to whatever that
+     method's own spec section defines: `GetSConnectedComponents`/`GetSDiameter` default to
+     `SDomain.Vertices` (§5.1/§5.3's wording), `GetSLineGraph` defaults to `SDomain.Hyperedges`
+     (§5.2's wording). This keeps every call shape the spec wrote, and it buys more than it costs —
+     each domain anchors a *different* oracle, so shipping both gains verification surface rather
+     than spending it.
+  3. **Implement the spec, assert the divergence.** Topos maximizes over the pairs that are
+     s-connected (defined on every input); the parity tests pin both halves — agreement where HNX
+     is willing to answer, and HNX's refusal where it is not.
+  4. Own branch (`m11-phase2-s-connectivity`), own commit, M12 work left untouched.
+- **What shipped:**
+  - `SDomain` (`src/Topos.Hypergraph/SDomain.cs`) — the vertex/hyperedge duality, with the reason
+    each domain exists written down at the point of use.
+  - `SAdjacency` (`src/Topos.Hypergraph/SAdjacency.cs`, internal) — the shared derivation. Both
+    domains are one routine with the two sides swapped. Uses co-occurrence counting (one pass over
+    the groups that exist) rather than the spec's budgeted O(V²·E) pairwise set-intersection: same
+    answer, strictly less work, no new storage or index — so it is not the kind of speculative
+    optimization the M0 benchmark gate exists to hold back.
+  - `IHypergraphQuery.SConnectivity.cs` — five default interface methods:
+    `GetSConnectedComponents`, `GetSLineGraph`, `GetSDistance`, `GetSEccentricity`, `GetSDiameter`.
+    `IHypergraphQuery` became `partial` to hold them in their own file (which is the shape spec
+    §5.1-5.3's own code blocks are written in). `GetSDistance` and `GetSEccentricity` are beyond the
+    three signatures the spec names: §5.3's *title* covers eccentricity but gives it no signature,
+    and a diameter with no distance function underneath it is an odd public surface. Both have
+    direct HNX oracles, so each one adds verification rather than only surface.
+  - `tests/Topos.Tests.HnxOracle/` — new test project mirroring `Topos.Tests.GdsOracle`: pinned
+    `python:3.11-slim` + `hypernetx==2.4.3` + `xgi==0.10.2` image, a JSON-over-stdin/stdout worker,
+    env-var config, once-per-run reachability probe, soft-skip when unreachable. Documented in
+    `docs/HNX_ORACLE_SETUP.md`.
+  - 37 new kernel tests and 10 new oracle-parity tests. Full suite **251 → 298, all passing**.
+    (298 counts the whole working tree, which also carries M12's `Living` work, uncommitted at
+    the time. This milestone's own commit checked out alone reports **283** — the same 47 new
+    tests on a tree without M12's 15.)
+- **Rationale:** the verification is the point of this work, so it is worth being precise about what
+  was actually achieved. Unlike phase 1 — which shipped with its six GDS-parity tests soft-skipping,
+  because no Neo4j was reachable in that session — **every parity test here ran live** against
+  HyperNetX 2.4.3 and xgi 0.10.2 in the pinned container, and passed. Concretely, that is
+  `ALGORITHM_GAP_LIST.md` §3's ladder with no rung assumed: T2 differential parity against HNX on
+  both domains, plus xgi as a second independent lineage on the line graph (and HNX-vs-xgi agreement
+  asserted separately, so a disagreement between *them* reads as a finding about the definition
+  rather than as a Topos failure); T3 metamorphic properties (s-monotonic refinement, partition,
+  symmetry, distance identity/symmetry/triangle-inequality, distance monotonicity in s, diameter =
+  max eccentricity); T4 hand-computed goldens on two fixtures; and T5 reduction anchors pinning s=1
+  onto the GDS-verified `GetConnectedComponents` and `GetShortestPathLength`, and the hyperedge
+  domain onto the pre-existing `SWalk` — cross-checked rather than implemented by delegation, so a
+  regression in either surfaces as a disagreement instead of being inherited silently.
+- **What it changes:** `src/Topos.Hypergraph/SDomain.cs`, `SAdjacency.cs`,
+  `IHypergraphQuery.SConnectivity.cs` (all new), `src/Topos.Hypergraph/IHypergraphQuery.cs`
+  (declaration made `partial`; no behavior change); `tests/Topos.Hypergraph.Tests/SFixtures.cs`,
+  `SConnectedComponentsTests.cs`, `SLineGraphTests.cs`, `SDistanceAndDiameterTests.cs` (new);
+  `tests/Topos.Tests.HnxOracle/*` (new project, added to `Topos.sln`);
+  `docs/HNX_ORACLE_SETUP.md` (new); `docs/ALGORITHM_SPEC.md` (§3.1, §5.1-5.3, §6.1 updated to record
+  what was decided); `docs/API_REFERENCE.md`; this file. The kernel's existing public surface is
+  untouched — purely additive, no storage-contract or concurrency-model change (spec §8).
+- **What's still open, explicitly not this pass:** **no NuGet publish and no version bump** —
+  `Topos.Hypergraph.csproj` stays at `0.2.0-m.11`, needing a separate explicit go-ahead. When that
+  comes, the scheme question is whether phase 2 is `0.2.0-m.11.2` (dotted, so it sorts numerically
+  above `-m.11` — the rule the 2026-08-03 entry established) or a plain minor bump; that is a
+  decision, not a default, which is why it is recorded here rather than made. Also open: spec §7's
+  exit-criterion items 2/3/5 — RLB and NexusVerifier adopting the new surface as real consumers.
+  RLB is mid-repair on its own correctness issues, so forcing cross-repo adoption now would be
+  premature; it is the natural follow-on once RLB is stable, not a blocker on this milestone.
+  Nested hyperedges (a Role:Edge vertex that is a member of another hyperedge) are covered by the
+  in-process tests but deliberately excluded from the oracle fixtures — HNX has one flat namespace
+  for nodes and edges, so the two models genuinely differ there; `HnxExport` throws rather than
+  exporting something HNX would quietly reinterpret.
+
+---
+
 ## 7. Decision log format for future entries
 
 When Nasser or a reviewer makes a decision that closes an open item, append it to §6 above as:

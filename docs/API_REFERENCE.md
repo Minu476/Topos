@@ -235,8 +235,18 @@ public interface IHypergraphQuery
     bool HasCycle();
     IReadOnlyDictionary<Handle, IReadOnlyList<Handle>> GetTransitiveClosure();
     IReadOnlyList<IReadOnlyList<Handle>> GetConnectedComponents();
+
+    // ── s-connectivity family (M11 phase 2, declared in IHypergraphQuery.SConnectivity.cs) ──
+    IReadOnlyList<IReadOnlyList<Handle>> GetSConnectedComponents(int s = 1, SDomain domain = SDomain.Vertices);
+    IReadOnlyDictionary<Handle, IReadOnlyList<Handle>> GetSLineGraph(int s = 1, SDomain domain = SDomain.Hyperedges);
+    int? GetSDistance(Handle from, Handle to, int s = 1, SDomain domain = SDomain.Vertices);
+    int? GetSEccentricity(Handle of, int s = 1, SDomain domain = SDomain.Vertices);
+    int? GetSDiameter(int s = 1, SDomain domain = SDomain.Vertices);
 }
 ```
+
+The interface is `partial`: the s-connectivity family lives in its own file. See **`SDomain` and the
+s-connectivity family** under Analytics below.
 
 **Every algorithm here is role-blind and co-membership-symmetric** ("the kernel does not judge"). A
 hop is one vertex→vertex step across one hyperedge; role direction is invisible. For role-aware /
@@ -440,6 +450,49 @@ s-adjacent hyperedges; s-distance is the shortest such path. **Deliberately not 
 operates on the binary projection and has no notion of "share ≥ s members"; Topos's answer is the
 novel claim here. Both methods throw `ArgumentOutOfRangeException` eagerly (not on enumeration) if
 `s < 1`. `[verified:src=src/Topos.Hypergraph/SWalk.cs:3-14]` `[verified:src=src/Topos.Hypergraph/SWalk.cs:17-31]`
+
+### `SDomain` and the s-connectivity family
+
+M11 phase 2. Spec §5.1-5.3. `[verified:src=src/Topos.Hypergraph/IHypergraphQuery.SConnectivity.cs]`
+
+```csharp
+public enum SDomain { Vertices, Hyperedges }
+```
+
+**s-adjacency is two relations, not one**, and both are in the literature. On `Vertices`, two
+vertices are s-adjacent when they are co-members of ≥ `s` common hyperedges; on `Hyperedges`, two
+hyperedges are s-adjacent when they share ≥ `s` common member vertices (this second one is exactly
+`SWalk`'s relation). The five methods above run over either.
+
+**The defaults differ by method, deliberately** — each matches the domain its own spec section
+defines. `GetSConnectedComponents`, `GetSDistance`, `GetSEccentricity` and `GetSDiameter` default to
+`Vertices`; `GetSLineGraph` defaults to `Hyperedges`. Pass `domain:` explicitly when it matters.
+
+Node sets, which are easy to get wrong and are what oracle parity turns on:
+
+- `Vertices` — every handle that is a member of ≥ 1 hyperedge. A handle belonging to no hyperedge
+  (a freshly-created vertex; a typical hyperedge, which is not itself nested in another) is **not a
+  node** — it has no s-adjacency at any `s`. This is HNX's node set.
+- `Hyperedges` — every `VertexRoles.Edge` vertex, including one with fewer than `s` members, which
+  appears as an isolated node. HNX and xgi both do the same.
+
+Singleton components **are** returned (HNX's default drops them; `return_singletons=True` is the
+comparable mode). `GetSLineGraph` returns every node as a key, mapping to an empty list when it has
+no s-adjacent neighbor. All five throw `ArgumentOutOfRangeException` eagerly for `s < 1`, matching
+`SWalk`.
+
+**One deliberate divergence from the oracle.** HNX's `diameter`/`edge_diameter`/`s_eccentricity`
+raise unless the *whole* hypergraph is s-connected. `GetSDiameter`/`GetSEccentricity` maximize over
+the pairs that are s-connected instead (spec §5.3's own definition), so they stay defined on every
+input; `GetSDiameter` returns `null` only when no two distinct nodes are s-connected.
+`tests/Topos.Tests.HnxOracle` asserts both parity where HNX answers and HNX's refusal where it does
+not.
+
+**Verification** (`ALGORITHM_GAP_LIST.md` §3's ladder — GDS structurally cannot check any of this):
+T2 parity against HyperNetX 2.4.3 on both domains, plus xgi 0.10.2 as a second independent lineage
+on the line graph; T3 metamorphic properties; T4 hand-computed goldens; T5 anchors pinning `s=1`
+onto the GDS-verified `GetConnectedComponents` and `GetShortestPathLength`, and the hyperedge domain
+onto `SWalk`. See `docs/HNX_ORACLE_SETUP.md`.
 
 ### `LabelPropagation`
 
