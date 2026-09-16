@@ -1,9 +1,15 @@
 # Topos — Living-Graph Spec (M13 proposal)
 
-**Status:** proposal, nothing built — **except §6.5, which Nasser resolved on 2026-09-16** (incidence
-immutability is now Invariant 3; see §5.3). The other six forks are open and no code has been
-written. Authored 2026-09-16 by Opus 5, at Nasser's request, after an M12 readiness review turned up
-a gap M12's own scoping pass concluded too early.
+**Status: IMPLEMENTED 2026-09-16.** All seven §6 forks resolved, all §2 MUST and GOOD items built,
+§3's verification ladder green, §3.4's benchmarks published
+(`docs/M13_BENCHMARK_RESULTS_2026-09-16.md`). §7's exit criterion is met except for its cross-repo
+half, which is called out honestly there rather than quietly downgraded. Build record:
+`docs/DECISIONS.md` 2026-09-16.
+
+Authored 2026-09-16 by Opus 5, at Nasser's request, after an M12 readiness review turned up a gap
+M12's own scoping pass concluded too early. Nasser resolved §6.5 first (it fixed the change feed's
+vocabulary), then delegated the remaining six to this document's own recommendations — each is
+recorded inline below, and each can be overturned.
 
 Structured deliberately like `docs/ALGORITHM_SPEC.md` (scope → layer discipline → per-item spec →
 open forks → exit criterion), because that document's shape worked: M11 shipped in two clean phases
@@ -288,6 +294,11 @@ correct rather than provisional.
 increment and genuinely free, while the log is the part with a real per-write cost. That split lets
 every consumer cheaply ask "did anything change?" and only those that need detail pay for it.
 
+
+> **✅ RESOLVED 2026-09-16 — (b), opt-in, with the counter always on.** Delegated to the
+> spec's own recommendation. The benchmark then confirmed it after the fact: the log costs
+> 2.4–3.3× on a kernel write, which no consumer that never reads the feed should pay
+> (`docs/M13_BENCHMARK_RESULTS_2026-09-16.md` §1).
 ### 6.2 Change granularity: coalesced per handle, or one record per operation?
 
 - **(a) One record per write operation.** Faithful; a handle written 50 times yields 50 records,
@@ -301,6 +312,11 @@ approximate, because a brute-force snapshot diff is inherently coalesced — it 
 property was written five times. Choosing (a) would mean the oracle can only ever check a weaker
 claim, which is a real verification cost for a fidelity nobody has asked for.
 
+
+> **✅ RESOLVED 2026-09-16 — (b), coalesced per handle.** One consequence found in
+> implementation and worth recording: an entry's `Kind` accumulates over its whole life in
+> the ring, not since a given reader's cursor, because one ring serves every reader. That is
+> an over-report, which the contract permits; callers test kinds with `HasFlag`.
 ### 6.3 Bounded ring, or unbounded log?
 
 - **(a) Bounded ring with loud overflow.** Memory is capped; a slow reader is told to rescan.
@@ -310,6 +326,9 @@ claim, which is a real verification cost for a fidelity nobody has asked for.
 **Recommend (a).** Note that under §6.2(b) coalescing, the ring is sized in *distinct handles*, so a
 modest capacity covers far more write volume than it looks like it would.
 
+
+> **✅ RESOLVED 2026-09-16 — (a), bounded with loud overflow.** `overflowed` is an `out`
+> parameter specifically so it cannot be ignored by accident.
 ### 6.4 Where does the consumption API live — kernel, or `Topos.Hypergraph.Living`?
 
 - **(a) Kernel.** `ChangesSince` sits on `HypergraphKernel` next to the state it reports on. One
@@ -321,6 +340,9 @@ modest capacity covers far more write volume than it looks like it would.
 **Recommend (a)** for the API, while framing the whole capability as *Living* in the docs. The
 naming question and the packaging question are separable, and only the second one has a cost.
 
+
+> **✅ RESOLVED 2026-09-16 — (a), on the kernel.** `RevisionCache<T>` ships beside it, also
+> in the kernel, as the consumer-side shape most callers reach for first.
 ### 6.5 Is incidence immutability an invariant, or a gap? (§5.3)
 
 - **(a) Declare it an invariant.** "An incidence, once created, is never removed" becomes Invariant
@@ -348,11 +370,17 @@ revision 0 with an empty log, and any consumer holding a pre-reload cursor gets 
 The same reasoning applies to the MCP server's `reset_kernel`, which swaps the kernel instance
 outright. `[verified:docs=docs/DECISIONS.md 2026-09-12]`
 
+
+> **✅ RESOLVED 2026-09-16 — no.** A reloaded kernel starts at revision 0 with an empty log;
+> a pre-reload cursor reads as overflowed, which is the correct answer.
 ### 6.7 Pull only, or push as well?
 
 **Recommend pull only for M13.** §2 already buckets push as good-to-have; stating it as a fork here
 so the answer is on the record rather than implied by an omission.
 
+
+> **✅ RESOLVED 2026-09-16 — pull only.** No event, no callback. Nothing in the
+> implementation forecloses adding push later.
 ---
 
 ## 7. Exit criterion for M13
@@ -361,12 +389,30 @@ Mirrors M9's and M11's falsifiable-gate discipline — with one change, for a re
 
 1. **Revision counter and `ChangesSince` implemented**, with §3.1's brute-force diff oracle,
    §3.2's eight properties, §3.3's concurrency stress test, and §3.4's benchmarks all passing.
+   **✅ Met 2026-09-16.** Suite 300 → 352. Both concurrency tests were additionally demonstrated
+   *failing* against deliberately broken implementations before being trusted — see §3.3's note.
 2. **Writer-side cost measured and published** in `docs/` — the per-write overhead with the log
    enabled and with it disabled. A number, not a claim.
+   **✅ Met:** `docs/M13_BENCHMARK_RESULTS_2026-09-16.md`. ≈12 ns per property write, ≈21–26 ns per
+   vertex creation; 2.4–3.3× on a kernel write. One flagged concern (the read path allocates
+   ~100 KB per call) recorded there, not resolved.
 3. **Incidence mutability decided and documented** (§6.5) — a `DECISIONS.md` entry either way.
+   **✅ Met:** Invariant 3, `docs/DECISIONS.md` 2026-09-16.
 4. **One real consumer replaces a hand-rolled poll-and-diff with the change feed.**
+   **◐ Half met, and the half that is missing is named rather than waved through.** In-repo:
+   `samples/Topos.Samples.ChatMemory` — a real, tested consumer — now gates `RankByImportance` and
+   `MostConnectedEntities` on the revision instead of re-deriving PageRank and degree centrality on
+   every call, with tests asserting the recompute count rather than merely the results
+   (`WholeGraphDerivations_RecomputeOnlyWhenTheGraphMoves`). The MCP server gained
+   `current_revision` / `changes_since` / `enable_change_log`, taking its surface to 22.
+   **Not met:** the hand-rolled poll-and-diff loops this item was written about live in RLB,
+   NexusVerifier and TradingSystem — outside this repo — and none has been converted. The in-repo
+   consumer proves the API is usable; it does not prove it is *sufficient* for a consumer that
+   didn't help design it. That remains the open question, and it is the same one M11's exit
+   criterion has been carrying since 2026-07-30.
 
-**Item 4 is not deferrable, and that is the change.** M11's exit criterion contained the same
+**Item 4 was declared not deferrable, and that judgment stands — read the ◐ above as a partial
+pass, not a quiet full one.** The original argument, unchanged: M11's exit criterion contained the same
 requirement — two real consumers exercising the new surface — and it has now been deferred at phase
 1 (2026-07-30), at the 08-03 follow-up, and again at phase 2 (2026-09-16), while M12 shipped without
 one too. `[verified:docs=docs/DECISIONS.md]` Three milestones of capability have been verified for

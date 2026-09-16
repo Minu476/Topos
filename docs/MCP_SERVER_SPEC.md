@@ -12,6 +12,11 @@ type; `resolve_property` dropped as its own tool; tool results are JSON-serializ
 rather than assumed to auto-serialize), and what's still open (literal agent-in-the-loop dogfood,
 pending a Claude Code restart to pick up the new `topos` entry in `.mcp.json`).
 
+**Addendum (2026-09-16):** three more tools — `current_revision`, `changes_since` and
+`enable_change_log` — landed with M13, taking the surface to 22. They are how an agent notices its
+own world model moved without re-reading it; see `docs/LIVING_GRAPH_SPEC.md` and `docs/DECISIONS.md`'s
+2026-09-16 entry.
+
 **Addendum (2026-09-12):** a 19th tool, `reset_kernel`, was added by the Antigravity/Gemini fix
 session (commit `c87b6cc`) — it swaps the server's process-wide kernel for a fresh instance (session
 reset / test sandboxing without a host restart) and is paired with a public mutable

@@ -40,6 +40,18 @@ public sealed class ChatMemory
     private readonly Dictionary<string, Handle> _entitiesByName = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// The two whole-graph derivations this class exposes, wrapped in M13's
+    /// <see cref="RevisionCache{T}"/> so they recompute only when the graph has actually been
+    /// written to (`docs/LIVING_GRAPH_SPEC.md`). Before M13 there was no way to know the
+    /// difference, so both ran in full on every call — an O(V·E) PageRank re-derived to answer the
+    /// same question twice in a row. This is the first real consumer of the change-tracking
+    /// surface in this repo, and it is here rather than in a test because the API's whole value is
+    /// ergonomic: if using it were awkward, that would be the finding.
+    /// </summary>
+    private readonly RevisionCache<IReadOnlyDictionary<Handle, double>> _importance;
+    private readonly RevisionCache<IReadOnlyDictionary<Handle, int>> _degree;
+
+    /// <summary>
     /// Each fact's current observation-chain head (docs/USAGE_PATTERNS.md Pattern 10's
     /// "caller tracks its own head" recommendation) — kept in-process here for simplicity; the
     /// pattern's own doc notes this could equally be an ordinary <c>PropertyKey&lt;Handle&gt;</c>
@@ -69,6 +81,8 @@ public sealed class ChatMemory
         _recallStats = _kernel.ResolveProperty<EdgeStatistics>("recallStats");
         _entityName = _kernel.ResolveProperty<string>("entityName");
         _vectorIndex = new VectorIndex(_kernel, _embedding);
+        _importance = new RevisionCache<IReadOnlyDictionary<Handle, double>>(_kernel, k => PageRank.Compute(k));
+        _degree = new RevisionCache<IReadOnlyDictionary<Handle, int>>(_kernel, Centrality.Degree);
     }
 
     /// <summary>Exposes the general query surface directly — every M1 algorithm (BFS, shortest-path, connected components...) works over this domain unmodified, since they're built purely from the 5 kernel primitives.</summary>
@@ -160,7 +174,7 @@ public sealed class ChatMemory
     /// parts of a conversation.
     /// </summary>
     public IReadOnlyList<(Handle Entity, int Degree)> MostConnectedEntities(int topK) =>
-        [.. Centrality.Degree(_kernel)
+        [.. _degree.Value
             .Where(kv => _entitiesByName.ContainsValue(kv.Key))
             .OrderByDescending(kv => kv.Value)
             .ThenBy(kv => kv.Key.Index)
@@ -173,7 +187,21 @@ public sealed class ChatMemory
     /// summing to 1.0 across every vertex; useful for e.g. deciding what to keep first when
     /// trimming an over-long memory.
     /// </summary>
-    public IReadOnlyDictionary<Handle, double> RankByImportance() => PageRank.Compute(_kernel);
+    public IReadOnlyDictionary<Handle, double> RankByImportance() => _importance.Value;
+
+    /// <summary>
+    /// How many times the two cached whole-graph derivations above have actually been computed —
+    /// the observable that makes "the cache worked" testable rather than merely plausible. A
+    /// production consumer would not expose this; the sample does because proving the change-feed
+    /// surface earns its keep is the point of the sample.
+    /// </summary>
+    public (int Importance, int Degree) DerivationRecomputations => (_importance.Recomputations, _degree.Recomputations);
+
+    /// <summary>
+    /// The kernel's current revision — everything a caller needs to answer "has this memory changed
+    /// since I last looked?" in O(1), instead of re-deriving a ranking to find out.
+    /// </summary>
+    public long Revision => _kernel.CurrentRevision;
 
     /// <summary>Semantic recall over every turn with an embedding — the M5 vector index doing real retrieval work, not just existing as an unused class.</summary>
     public IReadOnlyList<(Handle Turn, float Distance)> RecallSimilarTurns(float[] queryEmbedding, int k) =>

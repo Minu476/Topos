@@ -37,7 +37,7 @@ maintaining its own copy, and RLB's 346-test suite passes unchanged. See `docs/S
 
 **M10 is implemented (2026-07-27).** A new `Topos.Hypergraph.Mcp` package — a Model Context
 Protocol server (Microsoft's official `ModelContextProtocol` C# SDK, stdio transport, stateful
-single-session) exposing the kernel and `Topos.Hypergraph.Knowledge` as 19 agent-callable tools (18 at
+single-session) exposing the kernel and `Topos.Hypergraph.Knowledge` as 22 agent-callable tools (18 at
 launch; the 19th, `reset_kernel`, was added 2026-09-12 and blessed the same day — see
 `docs/DECISIONS.md`), so
 any MCP-aware agent can create vertices, build n-ary hyperedges, and query traversals with zero C#.

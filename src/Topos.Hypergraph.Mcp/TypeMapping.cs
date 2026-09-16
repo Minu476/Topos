@@ -64,3 +64,18 @@ public sealed record VertexInfo(string Handle, bool IsEdge, bool IsDormant);
 public sealed record IncidenceInfo(string Source, string Member, byte Role, int Ordinal);
 
 public sealed record NeighborResult(string Handle, float Distance);
+
+/// <summary>
+/// One entry from <c>changes_since</c> (M13). <paramref name="Kinds"/> is the flag names of the
+/// change, split into an array rather than a combined string, because an agent reasoning about
+/// "was this created, or only relabelled?" should not have to parse a comma-joined enum.
+/// </summary>
+public sealed record ChangeInfo(long Revision, string Handle, string[] Kinds);
+
+/// <summary>
+/// The <c>changes_since</c> envelope. <paramref name="Overflowed"/> is carried alongside the
+/// changes, not signalled by their absence, so an agent cannot mistake "you fell too far behind,
+/// rescan" for "nothing happened" — the two are opposite conclusions from the same empty-looking
+/// result.
+/// </summary>
+public sealed record ChangesResult(long Revision, bool Overflowed, ChangeInfo[] Changes);

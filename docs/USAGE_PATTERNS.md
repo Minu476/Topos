@@ -605,6 +605,78 @@ reload (`Pattern 7`) is the coarse reset.
 
 ---
 
+## Pattern 12 — Noticing change: the revision counter and the change feed
+
+Topos's views are live, but "live" means *recomputed*: a `Mask` predicate re-evaluates on every
+call, and anything derived from the whole graph — a PageRank ranking, a component partition — costs
+O(V) each time you ask. M13 adds the cheap question that was missing: **did anything actually
+change?**
+
+```csharp
+long cursor = kernel.CurrentRevision;   // O(1), allocation-free, always on
+// ... time passes, other code runs ...
+if (kernel.CurrentRevision == cursor) return;   // nothing happened; skip the work entirely
+```
+
+That alone is most of the win, and it costs nothing — the counter is always on.
+
+**The cached-derivation shape**, which is what most consumers actually want:
+
+```csharp
+var ranking = new RevisionCache<IReadOnlyDictionary<Handle, double>>(kernel, k => PageRank.Compute(k));
+
+var a = ranking.Value;   // computes
+var b = ranking.Value;   // free — literally the same object back
+kernel.CreateVertex();
+var c = ranking.Value;   // recomputes, because the graph moved
+```
+
+`RevisionCache<T>` is coarse on purpose: *any* write invalidates it, because `CurrentRevision` is
+one number for the whole kernel. For a whole-graph derivation that is exactly right. For something
+depending on a small subset, you want the feed below and your own invalidation rule.
+
+**When you need to know *what* changed**, not just that something did:
+
+```csharp
+kernel.EnableChangeLog(capacity: 4096);   // opt-in: every write pays for this
+long cursor = kernel.CurrentRevision;
+
+// ... writes happen ...
+
+foreach (var change in kernel.ChangesSince(cursor, out bool overflowed))
+{
+    if (change.Kind.HasFlag(ChangeKind.PropertySet)) ReindexProperties(change.Handle);
+    if (change.Kind.HasFlag(ChangeKind.IncidenceAdded)) RecomputeNeighbors(change.Handle);
+}
+if (overflowed) RebuildEverything();   // your cursor was too old; the list is only a suffix
+cursor = kernel.CurrentRevision;
+```
+
+Four things that will bite you if you skip them:
+
+- **Check `overflowed`.** It is an `out` parameter rather than a property so it cannot be ignored by
+  accident. An empty list because nothing happened and a short list because you fell behind are
+  opposite conclusions.
+- **Capacity counts distinct handles, not writes.** Entries coalesce per handle, so one vertex
+  written a million times occupies one entry. Size it against how many *different* things change
+  between your polls.
+- **Use `HasFlag`, not equality, on `Kind`.** An entry accumulates kinds over its whole life in the
+  ring, not just since your cursor.
+- **Guard `ChangesSince` with the counter.** The call allocates ~100 KB on a full ring
+  (`docs/M13_BENCHMARK_RESULTS_2026-09-16.md` §3); calling it only when `CurrentRevision` moved makes
+  that a non-issue, and calling it in a tight poll loop makes it steady GC pressure.
+
+**The feed may over-report, and will never under-report.** Writing a property back with the value it
+already had counts as a change, because detecting that would cost an equality comparison on every
+write. You may re-read something unchanged; you will not miss something that moved.
+
+**What it does not do.** There is no push notification, event or callback — this is pull-only by
+design (`LIVING_GRAPH_SPEC.md` §6.7). A reload via `Topos.Hypergraph.Persistence` is a new baseline,
+not a storm of changes: a restored kernel starts at revision 0 with an empty log, so a pre-reload
+cursor reads as overflowed, which is the correct answer.
+
+---
+
 ## Where to go next
 
 - **Look up a type used above** → [`API_REFERENCE.md`](API_REFERENCE.md).

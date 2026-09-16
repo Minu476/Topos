@@ -38,6 +38,9 @@ public sealed class HypergraphKernel : IHypergraphQuery
     private readonly PropertyRegistry _properties = new();
     private readonly ConcurrentDictionary<int, object> _propertyPools = new();
 
+    private long _revision;
+    private ChangeLog? _changeLog;
+
     public HypergraphKernel() => _allocator = new HandleAllocator();
 
     /// <summary>M4 persistence (spec §6): resumes Handle allocation after a reload rather than from 0, so a newly created vertex can never collide with one restored from a snapshot. See <see cref="HandleAllocator"/>'s constructor doc.</summary>
@@ -58,6 +61,7 @@ public sealed class HypergraphKernel : IHypergraphQuery
     {
         var handle = _allocator.Next();
         _vertices.Set(handle, new Vertex(handle, roles, VertexStatus.Active));
+        RecordChange(handle, ChangeKind.VertexCreated);
         return handle;
     }
 
@@ -77,6 +81,14 @@ public sealed class HypergraphKernel : IHypergraphQuery
     /// creates exactly the collision Invariant 1 forbids — the caller (here, only
     /// <c>HypergraphSnapshot.Load</c>) is responsible for restoring the allocator's cursor first.
     /// </summary>
+    /// <remarks>
+    /// <b>Does not move <see cref="CurrentRevision"/> and records nothing in the change log</b>
+    /// (M13, `docs/LIVING_GRAPH_SPEC.md` §6.6). A reload is a new baseline, not a change: emitting
+    /// one "change" per restored vertex would overflow any bounded log on the first snapshot load
+    /// and would tell a consumer that a hundred thousand things moved when nothing did. A reloaded
+    /// kernel starts at revision 0 with an empty log, so any consumer holding a pre-reload cursor
+    /// gets an overflow signal and rescans, which is the correct outcome.
+    /// </remarks>
     public void RestoreVertex(Handle handle, VertexRoles roles, VertexStatus status) =>
         _vertices.Set(handle, new Vertex(handle, roles, status));
 
@@ -108,7 +120,10 @@ public sealed class HypergraphKernel : IHypergraphQuery
     private void UpdateStatus(Handle handle, VertexStatus status)
     {
         if (_vertices.TryGet(handle, out var v) && v.Status != status)
+        {
             _vertices.Set(handle, v with { Status = status });
+            RecordChange(handle, ChangeKind.StatusChanged);
+        }
     }
 
     // ── Incidences ───────────────────────────────────────────────────────────
@@ -137,6 +152,7 @@ public sealed class HypergraphKernel : IHypergraphQuery
         var incidence = new Incidence(source, member, role, ordinal);
         _bySource.Append(source, incidence);
         _byMember.Append(member, incidence);
+        RecordChange(source, member, ChangeKind.IncidenceAdded);
         return incidence;
     }
 
@@ -167,16 +183,23 @@ public sealed class HypergraphKernel : IHypergraphQuery
     public PropertyKey<T> ResolveProperty<T>(string name) => _properties.Resolve<T>(name);
 
     /// <summary>Sets <paramref name="key"/>'s value for <paramref name="handle"/>, creating the property pool on first use. No existence check on <paramref name="handle"/> — properties on a not-yet-created or dormant Handle are legal (provenance edges always resolve, Invariant 1).</summary>
-    public void SetProperty<T>(PropertyKey<T> key, Handle handle, T value) =>
+    public void SetProperty<T>(PropertyKey<T> key, Handle handle, T value)
+    {
         GetPool<T>(key).Set(handle, value);
+        RecordChange(handle, ChangeKind.PropertySet);
+    }
 
     /// <summary>Resolves <paramref name="value"/> for <paramref name="key"/> on <paramref name="handle"/>. Returns <c>false</c> — with <paramref name="value"/> left as <c>default(T)</c> — if no value was ever set for this (key, handle) pair.</summary>
     public bool TryGetProperty<T>(PropertyKey<T> key, Handle handle, out T value) =>
         GetPool<T>(key).TryGet(handle, out value);
 
     /// <summary>Removes <paramref name="key"/>'s value for <paramref name="handle"/>, if any. Returns whether a value was actually present to remove.</summary>
-    public bool RemoveProperty<T>(PropertyKey<T> key, Handle handle) =>
-        GetPool<T>(key).Remove(handle);
+    public bool RemoveProperty<T>(PropertyKey<T> key, Handle handle)
+    {
+        if (!GetPool<T>(key).Remove(handle)) return false;
+        RecordChange(handle, ChangeKind.PropertyRemoved);
+        return true;
+    }
 
     /// <summary>Every (Handle, Value) pair currently set for <paramref name="key"/> — the columnar dump M4 snapshot persistence writes out per property (spec §6).</summary>
     public ImmutableArray<(Handle Handle, T Value)> EnumerateProperty<T>(PropertyKey<T> key) =>
@@ -184,4 +207,116 @@ public sealed class HypergraphKernel : IHypergraphQuery
 
     private PropertyPool<T> GetPool<T>(PropertyKey<T> key) =>
         (PropertyPool<T>)_propertyPools.GetOrAdd(key.Id, static _ => new PropertyPool<T>());
+
+    // ── Change tracking (M13, docs/LIVING_GRAPH_SPEC.md) ─────────────────────
+
+    /// <summary>
+    /// Monotonic count of writes applied to this kernel. Starts at 0 and increases by one per
+    /// write that actually changed something. Two reads returning the same value mean nothing
+    /// changed in between — which turns "is my view stale?" from an O(V) rescan into an integer
+    /// compare, and is the whole reason this is always on rather than opt-in like the change log
+    /// (`docs/LIVING_GRAPH_SPEC.md` §6.1): one increment per write is genuinely free, while
+    /// retaining *what* changed is not.
+    ///
+    /// <b>May over-report, never under-reports.</b> <see cref="SetProperty{T}"/> counts as a write
+    /// even when it stores a value equal to the one already there, because detecting that would
+    /// cost an equality comparison on every property write to spare consumers an occasional
+    /// redundant re-read. Writes that the kernel can see are no-ops for free do not count:
+    /// <see cref="SetDormant"/>/<see cref="Reactivate"/> on a vertex already in that status, and
+    /// <see cref="RemoveProperty{T}"/> with nothing to remove, both leave this untouched.
+    /// <see cref="RestoreVertex"/> never counts — see its own remarks.
+    ///
+    /// Safe to read from any thread while the single writer runs.
+    /// </summary>
+    public long CurrentRevision => Volatile.Read(ref _revision);
+
+    /// <summary>Whether <see cref="ChangesSince"/> can be called — see <see cref="EnableChangeLog"/>.</summary>
+    public bool IsChangeLogEnabled => _changeLog is not null;
+
+    /// <summary>
+    /// Starts retaining <i>what</i> changed, not merely that something did, in a bounded ring of
+    /// <paramref name="capacity"/> entries. <b>Off by default</b> (`docs/LIVING_GRAPH_SPEC.md`
+    /// §6.1): every write pays for the log, and most consumers today never read it, so the cost is
+    /// opt-in while <see cref="CurrentRevision"/> stays free for everyone.
+    ///
+    /// <paramref name="capacity"/> is measured in <b>distinct handles touched</b>, not in writes,
+    /// because entries coalesce per handle — a single vertex written a million times occupies one
+    /// entry. Size it against how many different things change between a consumer's polls, then;
+    /// a consumer that falls further behind than that is told so rather than silently shorted.
+    ///
+    /// Calling this again replaces the log and discards its contents; existing consumer cursors
+    /// will read as overflowed, which is the honest answer.
+    /// </summary>
+    public void EnableChangeLog(int capacity = 4096)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
+        _changeLog = new ChangeLog(capacity);
+    }
+
+    /// <summary>Stops retaining changes and releases the ring. <see cref="CurrentRevision"/> keeps moving.</summary>
+    public void DisableChangeLog() => _changeLog = null;
+
+    /// <summary>
+    /// Every handle touched since <paramref name="revision"/>, oldest first, each carrying every
+    /// <see cref="ChangeKind"/> that has touched it since — the answer to "what do I need to
+    /// re-read." Empty when nothing has changed.
+    ///
+    /// <paramref name="overflowed"/> is <c>true</c> when the ring has discarded a change this
+    /// caller had not yet seen: the cursor is stale, the returned list is a suffix rather than the
+    /// whole story, and the correct response is a full rescan. It is an <c>out</c> parameter rather
+    /// than a property precisely so it cannot be ignored by accident — a change feed that drops
+    /// changes quietly is worse than no feed, because consumers trust it.
+    ///
+    /// Pass the <see cref="CurrentRevision"/> you previously read; the returned entries are those
+    /// strictly newer. Reading <see cref="CurrentRevision"/> after this call gives the cursor for
+    /// next time.
+    ///
+    /// <b>An entry's <see cref="GraphChange.Kind"/> accumulates over that entry's whole life in the
+    /// ring, not over the window since your cursor.</b> One ring serves every reader, so the kinds
+    /// cannot be per-cursor. A handle created and later made dormant reports both to a reader who
+    /// already saw the creation. This is the same over-report <see cref="CurrentRevision"/>
+    /// documents: it can cost a consumer a redundant re-read, never a missed change. Test a kind
+    /// with <see cref="Enum.HasFlag"/> rather than equality.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The change log was never enabled.</exception>
+    public IReadOnlyList<GraphChange> ChangesSince(long revision, out bool overflowed)
+    {
+        var log = _changeLog ?? throw new InvalidOperationException(
+            "The change log is off. Call EnableChangeLog() before ChangesSince() — CurrentRevision " +
+            "works without it, but retaining what changed is opt-in (docs/LIVING_GRAPH_SPEC.md §6.1).");
+        return log.Since(revision, out overflowed);
+    }
+
+    /// <summary>
+    /// Assigns the next revision, records it, and only then publishes it.
+    ///
+    /// <b>The ordering is the load-bearing part.</b> The log is written before
+    /// <see cref="_revision"/> becomes visible, so a reader that observes revision N is guaranteed
+    /// the log already contains N. Publishing first would open a window where a consumer reads a
+    /// revision, calls <see cref="ChangesSince"/>, gets nothing back, and concludes — wrongly, and
+    /// silently — that it is up to date. Reading <see cref="_revision"/> here needs no interlocked
+    /// operation: under the SWMR model this runs on the single writer thread, which is the only
+    /// thread that writes it.
+    /// </summary>
+    private void RecordChange(Handle handle, ChangeKind kind)
+    {
+        long next = _revision + 1;
+        _changeLog?.Record(handle, kind, next);
+        Volatile.Write(ref _revision, next);
+    }
+
+    /// <summary>
+    /// Two handles, one write, one revision — <see cref="AddIncidence"/>, where the edge-vertex and
+    /// the member are both affected by the same single change.
+    /// </summary>
+    private void RecordChange(Handle first, Handle second, ChangeKind kind)
+    {
+        long next = _revision + 1;
+        if (_changeLog is { } log)
+        {
+            log.Record(first, kind, next);
+            if (second != first) log.Record(second, kind, next);
+        }
+        Volatile.Write(ref _revision, next);
+    }
 }

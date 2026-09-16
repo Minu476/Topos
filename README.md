@@ -13,7 +13,7 @@ provenance.
 |---|---|
 | **Packages** | `Topos.Hypergraph` (kernel + algorithms) · `Topos.Hypergraph.Persistence` (save/load) · `Topos.Hypergraph.Knowledge` (directed/role-aware traversal) · `Topos.Hypergraph.Living` (timestamped observation chains) · `Topos.Hypergraph.Mcp` (MCP server for agent tool-calling) |
 | **Target** | .NET 10 (`net10.0`), C# with `Nullable` + `ImplicitUsings` |
-| **Status** | M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done · M9 implemented · M10 (MCP server) implemented · M11 implemented in full (phase 1 GDS-verified, phase 2 HNX/xgi-verified) · M12 (`Living`) implemented. 298 tests pass. |
+| **Status** | M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done · M9 implemented · M10 (MCP server) implemented · M11 implemented in full (phase 1 GDS-verified, phase 2 HNX/xgi-verified) · M12 (`Living`) implemented · M13 (change tracking) implemented. 352 tests pass. |
 | **License** | MIT (decided 2026-07-26 — see `docs/NUGET_PUBLISH_CHECKLIST.md`). |
 
 ---
@@ -157,7 +157,7 @@ deferred pending a forcing consumer or a decision to go public — not in progre
   a pattern three independent consumers (ChatMemory, RLB, NexusVerifier) had each hand-rolled. Exit
   criterion met: RLB's `ToposGraphProjection` now calls into it instead of its own copy.
 - **M10** — `Topos.Hypergraph.Mcp` package: a Model Context Protocol server exposing the kernel and
-  `Topos.Hypergraph.Knowledge` as 19 agent-callable tools — 18 at launch, plus `reset_kernel` added
+  `Topos.Hypergraph.Knowledge` as 22 agent-callable tools — 18 at launch, plus `reset_kernel` added
   and blessed 2026-09-12 (Microsoft's official `ModelContextProtocol`
   C# SDK, stdio transport, stateful single-session). See `docs/MCP_SERVER_SPEC.md` for the design
   and `docs/DECISIONS.md`'s "M10 APPROVED AND IMPLEMENTED" entry for the build record.
@@ -169,8 +169,14 @@ deferred pending a forcing consumer or a decision to go public — not in progre
   `docs/HNX_ORACLE_SETUP.md`).
 - **M12** — `Topos.Hypergraph.Living`: timestamped observation chains over the existing primitives,
   for entities whose state has a history rather than only a present value. No kernel changes.
+- **M13** — change tracking: a monotonic `CurrentRevision` (always on, one increment per write) and
+  an opt-in coalescing change feed, `ChangesSince`. Turns "has the graph moved?" from an O(V) rescan
+  into an integer compare, and "what moved?" from a hand-written diff into a query. Recording change
+  was M12's job; *noticing* it is this one's. See
+  [`docs/LIVING_GRAPH_SPEC.md`](docs/LIVING_GRAPH_SPEC.md) and
+  [`docs/M13_BENCHMARK_RESULTS_2026-09-16.md`](docs/M13_BENCHMARK_RESULTS_2026-09-16.md).
 
-298 tests pass across the kernel, persistence, sample, Knowledge, Living, Mcp, and both oracle-parity
+352 tests pass across the kernel, persistence, sample, Knowledge, Living, Mcp, and both oracle-parity
 suites (the oracle suites self-skip when their oracle is unreachable). Topos is
 also a live `ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target —
 see `Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live

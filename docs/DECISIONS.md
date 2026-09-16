@@ -1090,6 +1090,82 @@ In priority order:
 - **What's still open:** the other six forks in `LIVING_GRAPH_SPEC.md` §6, and the M13 proposal
   itself, which remains unapproved and unbuilt.
 
+### 2026-09-16 — M13 IMPLEMENTED: change tracking (`CurrentRevision`, `ChangesSince`, `RevisionCache<T>`)
+
+- **Decider:** Nasser, executed by Opus 5 in the same session. Nasser resolved §6.5 explicitly (see
+  the Invariant 3 entry above), then delegated the remaining six `LIVING_GRAPH_SPEC.md` §6 forks to
+  that document's own recommendations. Every one is recorded inline in the spec and can be
+  overturned; none was silently assumed.
+- **Question:** M12 concluded that making a Topos graph "live" needed one thing — entities had no
+  timeline — and shipped `Living` to close it. That was right about the half it examined and stopped
+  one step early. "Living" has two halves: **recording** change, which M12 did, and **noticing** it,
+  which nothing in Topos could. A grep of the kernel for `event`, `INotify*`, `Changed`, `Revision`,
+  `Epoch` or `Version` returned zero hits outside doc comments, so every consumer wanting to stay in
+  sync had to rescan the whole graph and diff it by hand.
+- **Decision and what shipped:**
+  - **`CurrentRevision`** (`HypergraphKernel`) — monotonic, always on, one increment per write that
+    actually changed something. "Has the graph moved?" becomes an integer compare instead of an O(V)
+    rescan. Hooked into six of the seven write methods; `RestoreVertex` deliberately stays silent
+    (§6.6 — a reload is a new baseline, not a hundred thousand changes).
+  - **`ChangesSince(revision, out bool overflowed)`** + `ChangeKind`/`GraphChange` — an opt-in
+    (§6.1), bounded (§6.3), per-handle-coalescing (§6.2) ring on the kernel (§6.4), pull-only
+    (§6.7). `overflowed` is an `out` parameter precisely so it cannot be ignored: a feed that drops
+    changes silently is worse than no feed, because consumers trust it.
+  - **`RevisionCache<T>`** — the consumer-side shape most callers want first: a whole-graph
+    derivation that recomputes only when the graph moved.
+  - **Three MCP tools** (`current_revision`, `changes_since`, `enable_change_log`), taking the
+    server's surface from 19 to 22 — how an agent notices its own world model moved.
+  - **52 new tests** across five classes, and `docs/M13_BENCHMARK_RESULTS_2026-09-16.md`.
+    Suite **300 → 352**, full solution green in Release.
+- **Rationale, and the two things worth reading:**
+  1. **A bug the verification ladder caught that review would not have.** The first ring retired a
+     handle's old slot and appended a fresh one, so the write cursor advanced on *every* write and a
+     single hot handle still cycled the ring and evicted everything else — the coalescing claim in
+     the spec and in the class doc was simply false. Every hand-written case passed except the one
+     that asserted the capacity claim directly. Fixed by updating slots in place, which costs a sort
+     on the read side (`ChangeLog`'s class doc carries the reasoning).
+  2. **A concurrency test that could not fail, caught by the gate that exists to catch it.** Per the
+     handoff discussion, the rule was: demonstrate each concurrency test failing against a
+     deliberately broken implementation before trusting it. Reversing the publish ordering broke
+     `ReadersNeverSeeARevisionTheLogHasNotRecorded` as expected. **Removing every lock from
+     `ChangeLog` did not break the tearing test at all** — its assertion (`Revision > 0 && Kind !=
+     None`) was too weak to detect a torn 16-byte struct read. Rewritten around an invariant tearing
+     must break: a writer that only calls `CreateVertex` makes handle #i's revision exactly i+1, so
+     a torn entry pairs a fresh revision with a stale handle. The rewritten test fails in
+     milliseconds without the locks. **Without the gate it would have shipped as a passing test that
+     verified nothing** — which is the exact failure mode that made this the one item flagged as not
+     safe to hand off blind.
+- **Measured, not claimed** (`docs/M13_BENCHMARK_RESULTS_2026-09-16.md`): the log costs ≈12 ns per
+  property write and ≈21–26 ns per vertex creation — 2.4–3.3× on a kernel write, negligible against
+  any real per-step budget. That ratio is the evidence for §6.1's opt-in call. Coalescing verified
+  under a hot handle. **One flagged concern, not resolved:** `ChangesSince` allocates ~100 KB per
+  call on a full ring, benign under the documented counter-guarded usage and steady Gen0 pressure
+  under undisciplined polling. Three options noted, none taken.
+- **What it changes:** `src/Topos.Hypergraph/GraphChange.cs`, `ChangeLog.cs`, `RevisionCache.cs`
+  (new); `HypergraphKernel.cs` (revision + log surface, six write methods instrumented);
+  `src/Topos.Hypergraph.Mcp/` (three tools, two DTOs);
+  `tests/Topos.Hypergraph.Tests/{Revision,ChangeLog,ChangeLogProperty,ChangeLogDiffParity,ChangeLogConcurrency,RevisionCache}Tests.cs`
+  (new); `benchmarks/Topos.Hypergraph.Benchmarks/ChangeLogBenchmarks.cs` (new);
+  `samples/Topos.Samples.ChatMemory/` + its tests (first real consumer);
+  `docs/M13_BENCHMARK_RESULTS_2026-09-16.md` (new), `docs/LIVING_GRAPH_SPEC.md` (all forks resolved,
+  status + exit criterion updated), `USAGE_PATTERNS.md` Pattern 12, `API_REFERENCE.md`,
+  `Documentation.md`, `README.md`, `AGENTS.md`, `MCP_SERVER_SPEC.md`, `SPECIFICATION.md` (tool
+  count), this file. **No storage-contract change; both invariants and Invariant 3 intact.**
+- **The concurrency model, honestly:** this is the first Topos feature whose correctness *depends*
+  on the threading model rather than merely respecting it, which `ALGORITHM_SPEC.md` §8's "no
+  concurrency-model changes" did not anticipate. SWMR is not overturned — one writer, concurrent
+  readers — but a queue written by the writer and read concurrently is a new shape of shared state
+  in it. That is why §3.3's stress test and §3.4's benchmark were treated as requirements rather
+  than niceties, and why the ring is the boring `ReaderWriterLockSlim` design the M0 record argues
+  for rather than the lock-free one the problem invites.
+- **What's still open:** **exit item 4's cross-repo half.** In-repo, `ChatMemory` now gates its two
+  whole-graph derivations on the revision, with tests asserting the recompute count — that proves
+  the API is usable. It does not prove it is *sufficient* for a consumer that did not help design
+  it, and the hand-rolled poll-and-diff loops this milestone was written about live in RLB,
+  NexusVerifier and TradingSystem. That conversion is the real test and it has not happened. Also
+  open: the `ChangesSince` allocation above; push notification (§6.7, deliberately deferred); and
+  **no NuGet publish or version bump** — packages stay where they are, pending a separate go-ahead.
+
 ---
 
 ## 7. Decision log format for future entries

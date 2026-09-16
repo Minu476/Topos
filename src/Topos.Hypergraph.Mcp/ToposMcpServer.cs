@@ -202,6 +202,31 @@ public sealed class ToposMcpServer
         return TypeMapping.ToJson(neighbors.Select(n => new NeighborResult(n.Handle.ToString(), n.Distance)).ToArray());
     }
 
+    // ── Change tracking (M13) ───────────────────────────────────────────────
+
+    [McpServerTool(Name = "current_revision"), Description("The kernel's monotonic write counter. Two reads returning the same number mean nothing changed in between — the cheap way to check whether a cached view of the graph is still valid, without re-reading the graph.")]
+    public static string CurrentRevision() => TypeMapping.ToJson(Kernel.CurrentRevision);
+
+    [McpServerTool(Name = "changes_since"), Description("Every handle written since the given revision, each with the kinds of change that touched it, oldest first. Pass the revision you last saw; pass 0 for everything retained. If overflowed is true your cursor is too old, the list is only a suffix, and you should re-read the graph rather than trust it. Requires the change log to be on — call enable_change_log first.")]
+    public static string ChangesSince(long revision)
+    {
+        var changes = Kernel.ChangesSince(revision, out bool overflowed);
+        return TypeMapping.ToJson(new ChangesResult(
+            Kernel.CurrentRevision,
+            overflowed,
+            [.. changes.Select(c => new ChangeInfo(
+                c.Revision,
+                c.Handle.ToString(),
+                [.. c.Kind.ToString().Split(", ", StringSplitOptions.RemoveEmptyEntries)]))]));
+    }
+
+    [McpServerTool(Name = "enable_change_log"), Description("Starts retaining what changed, not merely that something did, in a ring of `capacity` entries. Off by default because every write pays for it. Capacity is counted in distinct handles touched, not writes — one vertex written a thousand times occupies one entry.")]
+    public static string EnableChangeLog(int capacity = 4096)
+    {
+        Kernel.EnableChangeLog(capacity);
+        return "ok";
+    }
+
     private static VertexInfo ToVertexInfo(Handle handle)
     {
         Kernel.TryGetVertex(handle, out var v);

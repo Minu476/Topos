@@ -209,4 +209,71 @@ public class ToposMcpServerTests
 
     private static T Deserialize<T>(string json) =>
         JsonSerializer.Deserialize<T>(json) ?? throw new InvalidOperationException($"Unexpected null deserializing {typeof(T)} from: {json}");
+
+    // ── M13 change tracking ─────────────────────────────────────────────────
+
+    [Fact]
+    public void CurrentRevision_MovesOnWritesAndNotOnReads()
+    {
+        long before = Deserialize<long>(ToposMcpServer.CurrentRevision());
+        ToposMcpServer.CreateVertex();
+        long after = Deserialize<long>(ToposMcpServer.CurrentRevision());
+        Assert.True(after > before);
+
+        ToposMcpServer.CountVertices();
+        Assert.Equal(after, Deserialize<long>(ToposMcpServer.CurrentRevision()));
+    }
+
+    [Fact]
+    public void ChangesSince_ReportsWhatAnAgentNeedsToReRead()
+    {
+        ToposMcpServer.EnableChangeLog(1024);
+        long cursor = Deserialize<long>(ToposMcpServer.CurrentRevision());
+
+        var created = Deserialize<VertexInfo>(ToposMcpServer.CreateVertex());
+        var result = Deserialize<ChangesResult>(ToposMcpServer.ChangesSince(cursor));
+
+        Assert.False(result.Overflowed);
+        var change = Assert.Single(result.Changes);
+        Assert.Equal(created.Handle, change.Handle);
+        Assert.Contains("VertexCreated", change.Kinds);
+        Assert.True(result.Revision >= change.Revision);
+    }
+
+    [Fact]
+    public void ChangesSince_SplitsCombinedKindsIntoSeparateNames()
+    {
+        // An agent asking "was this created, or only relabelled?" should not have to parse a
+        // comma-joined enum string.
+        ToposMcpServer.EnableChangeLog(1024);
+        long cursor = Deserialize<long>(ToposMcpServer.CurrentRevision());
+
+        var created = Deserialize<VertexInfo>(ToposMcpServer.CreateVertex());
+        ToposMcpServer.SetVertexStatus(created.Handle, dormant: true);
+
+        var result = Deserialize<ChangesResult>(ToposMcpServer.ChangesSince(cursor));
+        var change = Assert.Single(result.Changes, c => c.Handle == created.Handle);
+
+        Assert.Contains("VertexCreated", change.Kinds);
+        Assert.Contains("StatusChanged", change.Kinds);
+    }
+
+    [Fact]
+    public void ChangesSince_ReportsOverflowRatherThanLookingQuiet()
+    {
+        // The distinction that matters to an agent: an empty-looking result because nothing
+        // happened, versus because it fell too far behind. These must not be confusable.
+        ToposMcpServer.EnableChangeLog(2);
+        long cursor = Deserialize<long>(ToposMcpServer.CurrentRevision());
+        for (int i = 0; i < 10; i++) ToposMcpServer.CreateVertex();
+
+        var stale = Deserialize<ChangesResult>(ToposMcpServer.ChangesSince(cursor));
+        Assert.True(stale.Overflowed);
+
+        var current = Deserialize<ChangesResult>(ToposMcpServer.ChangesSince(stale.Revision));
+        Assert.False(current.Overflowed);
+        Assert.Empty(current.Changes);
+
+        ToposMcpServer.EnableChangeLog(4096);   // leave the shared kernel usable for other tests
+    }
 }

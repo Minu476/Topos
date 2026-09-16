@@ -500,6 +500,61 @@ on the line graph; T3 metamorphic properties; T4 hand-computed goldens; T5 ancho
 onto the GDS-verified `GetConnectedComponents` and `GetShortestPathLength`, and the hyperedge domain
 onto `SWalk`. See `docs/HNX_ORACLE_SETUP.md`.
 
+### Change tracking — `CurrentRevision`, `ChangesSince`, `RevisionCache<T>`
+
+M13. `docs/LIVING_GRAPH_SPEC.md`. The answer to "has the graph moved, and what moved?" — which
+before M13 could only be answered by rescanning and diffing by hand.
+
+```csharp
+public sealed class HypergraphKernel
+{
+    public long CurrentRevision { get; }                 // always on, O(1)
+    public bool IsChangeLogEnabled { get; }
+    public void EnableChangeLog(int capacity = 4096);    // opt-in
+    public void DisableChangeLog();
+    public IReadOnlyList<GraphChange> ChangesSince(long revision, out bool overflowed);
+}
+
+[Flags]
+public enum ChangeKind { None, VertexCreated, StatusChanged, IncidenceAdded, PropertySet, PropertyRemoved }
+
+public readonly record struct GraphChange(long Revision, Handle Handle, ChangeKind Kind);
+
+public sealed class RevisionCache<T>(HypergraphKernel kernel, Func<HypergraphKernel, T> compute)
+{
+    public T Value { get; }                 // recomputes only if the kernel was written to
+    public int Recomputations { get; }
+    public long ComputedAtRevision { get; }
+    public void Invalidate();
+}
+```
+
+**`CurrentRevision` is always on; the change log is opt-in.** One increment per write is free; the
+log costs ≈12 ns per property write and ≈21–26 ns per vertex creation — a 2.4–3.3× multiple on a
+kernel write, negligible in absolute terms, and not worth charging consumers who never read it
+(`docs/M13_BENCHMARK_RESULTS_2026-09-16.md`).
+
+Six behaviors that decide how you use it:
+
+- **Entries coalesce per handle.** Capacity is a budget of *distinct handles touched*, not of
+  writes; a hot vertex written a million times occupies one entry and evicts nothing.
+- **`Kind` accumulates over an entry's life in the ring**, not since your cursor — one ring serves
+  every reader. Test with `HasFlag`, not equality.
+- **`overflowed` is an `out` parameter, deliberately.** It means your cursor is stale and the list
+  is a suffix. It cannot be confused with "nothing happened" unless you ignore it.
+- **`AddIncidence` reports both participants** — the edge-vertex and the member — because a consumer
+  watching only the member would otherwise never learn it joined a relation.
+- **May over-report, never under-reports.** `SetProperty` counts even when the value is unchanged.
+- **`RestoreVertex` records nothing and does not move the revision.** A snapshot reload is a new
+  baseline, not a hundred thousand changes.
+
+No incidence-removal kind exists, and that is settled rather than pending: Invariant 3.
+
+`RevisionCache<T>` is the consumer-side shape most callers want first — coarse by design (any write
+invalidates it) and not thread-safe by design (one cursor per reader). Worked example:
+`samples/Topos.Samples.ChatMemory`'s `RankByImportance`/`MostConnectedEntities`.
+See [`USAGE_PATTERNS.md`](USAGE_PATTERNS.md) Pattern 12.
+
 ### `LabelPropagation`
 
 Community detection by label propagation. GDS-verified (`gds.labelPropagation`).

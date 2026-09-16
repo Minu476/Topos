@@ -8,7 +8,8 @@
 > M9 implemented · M10 (MCP server) implemented · M11 implemented in full — phase 1
 > (Centrality/PageRank/Directed SCC, GDS-verified against a live instance) and phase 2
 > (s-connected-components/s-line-graph/s-diameter/s-eccentricity, verified against live HyperNetX
-> and xgi). 298 tests pass. License: **MIT** (decided 2026-07-26). NuGet
+> and xgi) · M12 (`Living`, observation chains) and M13 (change tracking: `CurrentRevision` +
+> `ChangesSince`) implemented. 352 tests pass. License: **MIT** (decided 2026-07-26). NuGet
 > packages (`Topos.Hypergraph`, `Topos.Hypergraph.Persistence`, `Topos.Hypergraph.Knowledge`) are
 > published — see [§1 Installation](#1-installation) for the current state.
 
@@ -1023,6 +1024,61 @@ GDS-verified** — GDS operates on the binary projection and has no notion of "s
 Topos's answer is the novel claim here. Both methods throw `ArgumentOutOfRangeException` eagerly (not
 on enumeration) if `s < 1`. `[verified:src=src/Topos.Hypergraph/SWalk.cs:3-14]` `[verified:src=src/Topos.Hypergraph/SWalk.cs:17-31]`
 
+#### Change tracking — `CurrentRevision`, `ChangesSince`, `RevisionCache<T>`
+
+M13. `docs/LIVING_GRAPH_SPEC.md`. The answer to "has the graph moved, and what moved?" — which
+before M13 could only be answered by rescanning and diffing by hand.
+
+```csharp
+public sealed class HypergraphKernel
+{
+    public long CurrentRevision { get; }                 // always on, O(1)
+    public bool IsChangeLogEnabled { get; }
+    public void EnableChangeLog(int capacity = 4096);    // opt-in
+    public void DisableChangeLog();
+    public IReadOnlyList<GraphChange> ChangesSince(long revision, out bool overflowed);
+}
+
+[Flags]
+public enum ChangeKind { None, VertexCreated, StatusChanged, IncidenceAdded, PropertySet, PropertyRemoved }
+
+public readonly record struct GraphChange(long Revision, Handle Handle, ChangeKind Kind);
+
+public sealed class RevisionCache<T>(HypergraphKernel kernel, Func<HypergraphKernel, T> compute)
+{
+    public T Value { get; }                 // recomputes only if the kernel was written to
+    public int Recomputations { get; }
+    public long ComputedAtRevision { get; }
+    public void Invalidate();
+}
+```
+
+**`CurrentRevision` is always on; the change log is opt-in.** One increment per write is free; the
+log costs ≈12 ns per property write and ≈21–26 ns per vertex creation — a 2.4–3.3× multiple on a
+kernel write, negligible in absolute terms, and not worth charging consumers who never read it
+(`docs/M13_BENCHMARK_RESULTS_2026-09-16.md`).
+
+Six behaviors that decide how you use it:
+
+- **Entries coalesce per handle.** Capacity is a budget of *distinct handles touched*, not of
+  writes; a hot vertex written a million times occupies one entry and evicts nothing.
+- **`Kind` accumulates over an entry's life in the ring**, not since your cursor — one ring serves
+  every reader. Test with `HasFlag`, not equality.
+- **`overflowed` is an `out` parameter, deliberately.** It means your cursor is stale and the list
+  is a suffix. It cannot be confused with "nothing happened" unless you ignore it.
+- **`AddIncidence` reports both participants** — the edge-vertex and the member — because a consumer
+  watching only the member would otherwise never learn it joined a relation.
+- **May over-report, never under-reports.** `SetProperty` counts even when the value is unchanged.
+- **`RestoreVertex` records nothing and does not move the revision.** A snapshot reload is a new
+  baseline, not a hundred thousand changes.
+
+No incidence-removal kind exists, and that is settled rather than pending: Invariant 3.
+
+`RevisionCache<T>` is the consumer-side shape most callers want first — coarse by design (any write
+invalidates it) and not thread-safe by design (one cursor per reader). Worked example:
+`samples/Topos.Samples.ChatMemory`'s `RankByImportance`/`MostConnectedEntities`.
+See [`USAGE_PATTERNS.md`](USAGE_PATTERNS.md) Pattern 12.
+
 #### `LabelPropagation`
 
 Community detection by label propagation. GDS-verified (`gds.labelPropagation`).
@@ -1819,14 +1875,14 @@ project's `.mcp.json`):
 `[verified:src=samples/Topos.Samples.McpAgent/.mcp.json.example]`
 `[verified:src=samples/Topos.Samples.McpAgent/README.md]`
 
-Then restart your agent. It discovers the 19 tools automatically via MCP's `tools/list` and can
+Then restart your agent. It discovers the 22 tools automatically via MCP's `tools/list` and can
 call them via `tools/call`.
 
 > **Build first:** `dotnet build src/Topos.Hypergraph.Mcp -c Release` from the repo root before
 > the agent first spawns it (the `--no-build` flag assumes a built binary).
 > `[verified:src=samples/Topos.Samples.McpAgent/README.md:9]`
 
-### 6.3 The 19 tools
+### 6.3 The 22 tools
 
 Each is a `[McpServerTool]` method on `ToposMcpServer`, wrapping the cited primitive. Tool names
 use `snake_case` (MCP convention); parameters are JSON.
@@ -1864,6 +1920,20 @@ throw `ArgumentException`. `[verified:src=src/Topos.Hypergraph.Mcp/TypeMapping.c
 > **Type narrowness is deliberate for v1.** `int`, `long`, `DateOnly`, `byte`, and custom types
 > aren't in the tagged union — agents overwhelmingly store names, scores, flags, and embeddings,
 > and an agent wanting a date can store an ISO string. Adding more types is a v1.1 concern.
+
+#### Change tracking (M13)
+
+How an agent notices its own world model moved, instead of re-reading it to find out.
+
+| Tool | Wraps | Source |
+|---|---|---|
+| `current_revision` | `HypergraphKernel.CurrentRevision` — O(1); same number twice means nothing changed | `[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs]` |
+| `enable_change_log` | `EnableChangeLog(capacity)` — off by default; capacity counts *distinct handles*, not writes | `[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs]` |
+| `changes_since` | `ChangesSince(revision, out overflowed)` — handles touched since your cursor, with their kinds | `[verified:src=src/Topos.Hypergraph.Mcp/ToposMcpServer.cs]` |
+
+> **`overflowed` is carried in the result, not signalled by an empty list.** "Nothing happened" and
+> "you fell too far behind, re-read everything" are opposite conclusions, and an agent that confused
+> them would confidently act on a stale world model. Check the flag before trusting the list.
 
 #### Kernel-level query (role-blind, topology-only)
 

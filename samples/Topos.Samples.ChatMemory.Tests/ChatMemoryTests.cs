@@ -288,4 +288,65 @@ public class ChatMemoryTests
         Assert.Contains(factB, cycles[0]);
         Assert.Contains(factC, cycles[0]);
     }
+
+    [Fact]
+    public void WholeGraphDerivations_RecomputeOnlyWhenTheGraphMoves()
+    {
+        // M13's exit criterion, exercised by a real consumer rather than asserted in the abstract:
+        // RankByImportance runs PageRank over every vertex. Asking twice in a row used to cost two
+        // full runs; now the second is free because the kernel's revision did not move.
+        var memory = new ChatMemory();
+        memory.RecordTurn("nasser", "topos stores hypergraphs", [1f, 0f], DateTimeOffset.UtcNow);
+
+        _ = memory.RankByImportance();
+        _ = memory.RankByImportance();
+        _ = memory.RankByImportance();
+
+        Assert.Equal(1, memory.DerivationRecomputations.Importance);
+    }
+
+    [Fact]
+    public void WholeGraphDerivations_RefreshAfterNewContent()
+    {
+        var memory = new ChatMemory();
+        memory.RecordTurn("nasser", "first", [1f, 0f], DateTimeOffset.UtcNow);
+        var before = memory.RankByImportance();
+
+        memory.RecordTurn("claude", "second", [0f, 1f], DateTimeOffset.UtcNow);
+        var after = memory.RankByImportance();
+
+        Assert.Equal(2, memory.DerivationRecomputations.Importance);
+        Assert.NotEqual(before.Count, after.Count);   // the new turn really is in the ranking
+    }
+
+    [Fact]
+    public void Revision_AnswersHasAnythingChanged_WithoutRederivingAnything()
+    {
+        // The O(1) question M13 exists to make askable.
+        var memory = new ChatMemory();
+        long cursor = memory.Revision;
+
+        Assert.Equal(cursor, memory.Revision);       // nothing happened
+
+        memory.RecordTurn("nasser", "something happened", [1f, 0f], DateTimeOffset.UtcNow);
+        Assert.True(memory.Revision > cursor);
+
+        // and no derivation was computed to find that out
+        Assert.Equal(0, memory.DerivationRecomputations.Importance);
+    }
+
+    [Fact]
+    public void BothCachedDerivationsShareTheSameCursorIndependently()
+    {
+        var memory = new ChatMemory();
+        var turn = memory.RecordTurn("nasser", "alice met bob", [1f, 0f], DateTimeOffset.UtcNow);
+        memory.RecordMention(turn, [memory.GetOrCreateEntity("alice"), memory.GetOrCreateEntity("bob")]);
+
+        _ = memory.MostConnectedEntities(5);
+        _ = memory.MostConnectedEntities(5);
+        Assert.Equal((0, 1), memory.DerivationRecomputations);   // degree computed, importance never asked
+
+        _ = memory.RankByImportance();
+        Assert.Equal((1, 1), memory.DerivationRecomputations);
+    }
 }
