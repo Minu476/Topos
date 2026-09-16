@@ -1,0 +1,37 @@
+name: Build and Test
+
+# Runs on every push to main and every pull request.
+# Correctness currently rests on local runs (the repo previously had only the
+# manual NuGet-publish workflow); this closes that gap cheaply — the whole
+# suite runs in ~2s here, because both oracle projects self-skip when their
+# oracle is unreachable and neither needs a service container to stay green:
+#   - Topos.Tests.GdsOracle  — 3s Bolt probe (Neo4jTestConfig), no Neo4j in CI.
+#   - Topos.Tests.HnxOracle  — one `docker run --pull=never` against an image
+#     CI has not built, so it fails locally and instantly rather than waiting
+#     on a registry pull for an image that was never published to one.
+# Running either oracle for real in CI is a deliberate future step (it would
+# mean a Neo4j+GDS service container and a `docker build` step), not an
+# oversight — see docs/GDS_ORACLE_SETUP.md and docs/HNX_ORACLE_SETUP.md.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Topos.sln
+
+      - name: Build
+        run: dotnet build Topos.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Topos.sln -c Release --no-build
