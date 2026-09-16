@@ -46,7 +46,7 @@ M1+ (algorithms). These are intentionally *not* tonight's job — see §2.
   property-based testing library), note the need in your morning report instead of adding it.
 - **Every source claim keeps the `[verified:src=...]` / `[unverified:...]` discipline** — same
   standard as the rest of `docs/`.
-- **At the end of the session:** update `docs/SESSION_HANDOFF.md` with what you did, and leave a
+- **At the end of the session:** update `docs/process/SESSION_HANDOFF.md` with what you did, and leave a
   short morning-report section at the top of this file (or a new `docs/GLM_OVERNIGHT_REPORT_2026-07-23.md`)
   summarizing results per task below.
 

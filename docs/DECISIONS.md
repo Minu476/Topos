@@ -459,7 +459,7 @@ In priority order:
   progress" waiting on OSS-timing decisions that aren't imminent — keeps the roadmap status
   honest.
 - **What it changes:** No code. Status framing only, in `AGENTS.md` and
-  `docs/SESSION_HANDOFF.md` — M8 moves from "in progress" to "done (API-stability scope);
+  `docs/process/SESSION_HANDOFF.md` — M8 moves from "in progress" to "done (API-stability scope);
   HIF/docs-site/NuGet-publish remain separately gated, not blockers."
 
 ### 2026-07-25 — M9 SCOPED: layer-1 role-aware directed traversal package
@@ -873,6 +873,60 @@ In priority order:
 - **Not done here:** republishing to NuGet under the new versions (a separate, permanent action
   requiring an explicit go-ahead), and unlisting the mis-ordered `0.1.0-m*` versions.
 
+---
+
+### 2026-09-06 — M12 SCOPED AND IMPLEMENTED: `Topos.Hypergraph.Living`, timestamped observation-chain package
+
+- **Decider:** Nasser, executed by Sonnet 5.
+- **Question:** an extended discussion (with GPT, then with Claude, in a downstream consumer's
+  session) about making a Topos-based hypergraph "live"/adaptive rather than a disposable snapshot
+  produced a wishlist — persistent entity identity, continuous state, temporal history,
+  uncertainty, evolving hyperedge membership, event lifecycle, learned state transitions, agents
+  reading/writing the world model. On investigation nearly all of it already existed as composable
+  Topos primitives (`Handle`, `VertexStatus` dormancy, `PropertyKey<T>`, `AssertionMode`,
+  `Provenance`, `EdgeStatistics`, `LearnableEdge`, nested reification, `Topos.Hypergraph.Mcp`) —
+  except one real gap: `PropertyKey<T>` is present-only (`SetProperty` overwrites the previous
+  value), and nested reification answers "derived from what," not "what was this entity's own
+  timeline." Does that gap warrant a new package, and what exactly does it contain?
+- **Decision:** yes — a new package, `Topos.Hypergraph.Living` (own assembly, mirroring the M9
+  `Topos.Hypergraph.Knowledge` packaging precedent exactly), providing one static extension-method
+  class, `ObservationChain`, over existing primitives. No new kernel primitives, no vertex
+  subclassing — `docs/CONCEPTS.md`'s "what Topos is not" is explicit that a hypothesized/evolving
+  concept is a regular `Vertex` with properties, never a different kind of vertex, and the same
+  discipline applies here: a "living" entity is a regular vertex with an observation chain attached,
+  never a `LivingVertex`. Each state-change is reified as its own edge-vertex, incident to the
+  entity it describes and, except at genesis, to its immediate predecessor — a backward-linked list
+  walked newest-to-oldest via `RecordObservation`/`RecordedAt`/`EntityOfObservation`/
+  `PreviousObservation`/`ObservationHistory`. Two deliberate non-features: no library-shipped role
+  enum (plain `byte` parameters only, matching `DirectedTraversal`'s exact style — a documentation-
+  only example enum is all `USAGE_PATTERNS.md` Pattern 10 ships), and no "find latest observation"
+  method (callers track their own head as an ordinary `PropertyKey<Handle>` on the entity — no
+  derived state the library would have to invent or keep correct).
+- **Rationale:** the gap is real (present-only properties genuinely can't answer "what was the
+  timeline"), but everything needed to fill it already exists as composable primitives — this is a
+  documentation-and-thin-API package exactly like M9's `Topos.Hypergraph.Knowledge`, not a kernel
+  change. Declining a "find latest" method matches `ROLE_CONVENTIONS.md`'s prior refusal to add
+  machinery (a role registry) for a problem an explicit, cheap caller-side workaround already
+  solves. Confirmed via a dedicated test (`DormantObservation_StillResolvesInHistoryWalk`) that
+  Invariant 1 means marking an observation dormant does not hide it from history — that's an
+  explicit documented finding in both `USAGE_PATTERNS.md` and `API_REFERENCE.md`, not just a test.
+- **What it changes:** new `src/Topos.Hypergraph.Living/` (`Topos.Hypergraph.Living.csproj`,
+  `ObservationChain.cs`) and `tests/Topos.Hypergraph.Living.Tests/`
+  (`Topos.Hypergraph.Living.Tests.csproj`, `ObservationChainTests.cs`, 12 tests); both added to
+  `Topos.sln` via `dotnet sln add`. `docs/USAGE_PATTERNS.md` gains Pattern 10;
+  `docs/API_REFERENCE.md` gains a Living section. `samples/Topos.Samples.ChatMemory/ChatMemory.cs`
+  gains `RecordFactStatusChange`/`FactStatusHistory` (a fact's `AssertionMode` changing over time)
+  as the in-repo consumer, with `ChatMemory.csproj` gaining a `Topos.Hypergraph.Living` project
+  reference and `ChatMemoryTests.cs` gaining 3 new tests. Package version `0.2.0-m.12` (next
+  unclaimed milestone suffix; `0.2.0` base unchanged per the prior NuGet version-scheme decision).
+  Full solution suite: 248/248 passing (up from 233), zero regressions. No kernel changes.
+- **Not done here:** NuGet publishing of the new package (a separate action requiring explicit
+  go-ahead, same as every prior publish decision); generic `TRole`-typed overloads analogous to
+  `RoleExtensions` (deferred until a second consumer hits friction with the plain-`byte`/cast
+  pattern, same M8 precedent that delayed `Knowledge`'s own generic overloads); a symmetric
+  forward-pointing index for chronological (oldest-first) traversal without a caller-side
+  `.Reverse()`.
+
 ### 2026-09-12 — MCP `reset_kernel` blessed as documented scope (19th tool); `DirectedBfs` handle-validation gap closed
 
 - **Decider:** Nasser, after a post-hoc review by GLM-5.2 (ZCode) of the Antigravity/Gemini fix
@@ -897,8 +951,6 @@ In priority order:
   `README.md` / `docs/SPECIFICATION.md` / `docs/Documentation.md` / `docs/MCP_SERVER_SPEC.md` /
   this file (this session). Historical "18 tools" statements inside the frozen M10 record and the
   2026-07-27 dogfood log are left as history; the parentheticals elsewhere carry the change.
-
----
 
 ### 2026-09-16 — M11 PHASE 2 IMPLEMENTED: s-connected-components, s-line-graph, s-diameter; HNX/xgi oracle stood up
 

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Topos.Hypergraph\Topos.Hypergraph.csproj" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Topos.Hypergraph.Living</RootNamespace>
+    <AssemblyName>Topos.Hypergraph.Living</AssemblyName>
+    <PackageId>Topos.Hypergraph.Living</PackageId>
+    <Description>
+      M12 packaging (docs/DECISIONS.md "M12 SCOPED AND IMPLEMENTED"): layer-1 timestamped
+      observation-chain / state-history convenience over Topos.Hypergraph's
+      IHypergraphQuery/HypergraphKernel — RecordObservation, RecordedAt, EntityOfObservation,
+      PreviousObservation, ObservationHistory. No kernel changes; pure composition of Handle +
+      reification (VertexRoles.Edge) + PropertyKey&lt;DateTimeOffset&gt;. Fills the one real gap
+      in the "living hypergraph" wishlist that existing primitives (AssertionMode, Provenance,
+      EdgeStatistics, LearnableEdge) didn't already cover: PropertyKey&lt;T&gt; is present-only,
+      so this is how to keep a timeline of an entity's own state without new kernel storage.
+    </Description>
+    <Authors>Nasser Towfigh</Authors>
+    <Copyright>Copyright © 2026 Nasser Towfigh</Copyright>
+    <!-- Dot-separated prerelease suffix — see the note in Topos.Hypergraph.csproj and
+         docs/DECISIONS.md 2026-08-03 "NUGET VERSION SCHEME CORRECTED". -->
+    <Version>0.2.0-m.12</Version>
+    <!-- License: SPDX expression. NuGet.org renders this; no file-bundling needed. -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <!-- Source repo: lets consumers trace the package back to this code. -->
+    <RepositoryUrl>https://github.com/Minu476/Topos.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- Project page on nuget.org's "Project website" link. -->
+    <PackageProjectUrl>https://github.com/Minu476/Topos</PackageProjectUrl>
+    <!-- Discoverability: these show up in nuget.org search and package listings. -->
+    <PackageTags>hypergraph;ai-memory;agent-memory;llm;knowledge-graph;csharp;graph;incidence;n-ary;temporal;state-history;event-sourcing</PackageTags>
+    <!-- Optional but recommended: render the repo README on the nuget.org package page. -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+</Project>

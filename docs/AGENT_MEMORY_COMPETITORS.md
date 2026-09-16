@@ -615,7 +615,7 @@ Together they answer the central question.**
   defense (research prototype vs. production substrate; document-RAG/working-memory vs.
   persistent stateful memory; topic-clustering vs. n-ary relational primitives) is in §5.5.
   HyperMem (ACL 2026, ~12★) is the closest to the thesis and the one to watch.
-- **Nasser should read the Medium Kuzu piece directly** before M4 (`docs/SESSION_HANDOFF.md §7`)
+- **Nasser should read the Medium Kuzu piece directly** before M4 (`docs/process/SESSION_HANDOFF.md §7`)
   — it's the deepest public architectural analysis of Kuzu's storage engine, relevant to the
   persistence tier Topos will build.
 

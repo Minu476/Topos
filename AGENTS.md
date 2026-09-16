@@ -21,7 +21,7 @@ M8's API-stability scope is done; M9 implemented; M10 (MCP server) implemented.*
 approved (GPT + Claude passes, `docs/reactions/`) before implementation started. Topos is a live
 `ProjectReference` in Rich-Learning-Base's V2 codebase (`ToposGraphProjection.cs`, now also
 referencing `Topos.Hypergraph.Knowledge`) and has a second real consumer (NexusVerifier's AND-OR
-proof-search chainer) — see `docs/SESSION_HANDOFF.md` for the precise carry-on state and
+proof-search chainer) — see `docs/process/SESSION_HANDOFF.md` for the precise carry-on state and
 `docs/DECISIONS.md`'s three 2026-07-25 entries for what M8 resolved and why it's closed. **M8's
 other spec items — HIF interchange, a docs site, and NuGet-publish readiness — are deliberately
 deferred**, each gated on a condition that hasn't arrived (a forcing consumer, or a decision to go
@@ -145,7 +145,7 @@ loaded; if not, use the `fsde` CLI as a fallback):
 If FSDE MCP tools are NOT loaded in the session, the `fsde` CLI works:
 `fsde get-context --dir <absolute path to this repo>`.
 
-**Either way, always read `docs/SESSION_HANDOFF.md` first** — it carries the carry-on state
+**Either way, always read `docs/process/SESSION_HANDOFF.md` first** — it carries the carry-on state
 across sessions and is authoritative when FSDE is cold.
 
 ---
@@ -169,7 +169,7 @@ across sessions and is authoritative when FSDE is cold.
 - **`fsde_end_session`** with a summary of what was done, decisions made, what's next.
 - **`fsde_log_work_event`** for anything the next session needs to know.
 - **`fsde_set_objective`** if the goal shifted.
-- **Update `docs/SESSION_HANDOFF.md`** so the next session opens briefed, not cold.
+- **Update `docs/process/SESSION_HANDOFF.md`** so the next session opens briefed, not cold.
 
 ---
 
@@ -202,7 +202,8 @@ across sessions and is authoritative when FSDE is cold.
     │                                  # one file (concepts + getting-started + API reference + usage
     │                                  # patterns) with a unified TOC and in-file anchors. The single
     │                                  # doc to read or hand to a reviewer/GPT. Updated for NuGet (MIT).
-    │                                  # Source for Documentation.{html,pdf} below.
+    │                                  # Source for the generated Documentation.{html,pdf} build
+    │                                  # artifacts (untracked — regenerate via build_pdf.py, see below).
     ├── build_pdf.py                  # One-command Markdown→PDF builder. Usage:
     │                                  #   .pdf-venv/bin/python docs/build_pdf.py [input.md [out.pdf]]
     │                                  # Defaults: docs/Documentation.{md,pdf}. Produces a vector PDF
@@ -221,7 +222,6 @@ across sessions and is authoritative when FSDE is cold.
     ├── AGENT_MEMORY_COMPETITORS.md   # the Zep/mem0/Letta/Cognee survey + n-ary-DB matrix
     ├── SPECIFICATION.md              # the consolidated spec — approved by GPT + Claude
     ├── DECISIONS.md                  # what reviewers locked vs. left open
-    ├── SESSION_HANDOFF.md            # carry-on context — READ FIRST
     ├── M0_BENCHMARK_RESULTS_2026-07-24.md  # measured benchmark gate + the COW→RWLS correction
     ├── GDS_ORACLE_SETUP.md           # GDS-parity Docker setup + the Neo4j credential-isolation
     │                                  # writeup (host Neo4j instance rebind/rotation, unrelated
@@ -233,8 +233,6 @@ across sessions and is authoritative when FSDE is cold.
     │                                  # the M8 API-stability review — 6 source-cited findings.
     ├── ROLE_CONVENTIONS.md           # M8: the documented byte-backed-enum role pattern
     │                                  # (resolves finding #3) — no kernel change, consumer guidance
-    ├── GLM_DOCUMENTATION_GUIDELINES.md # standing role boundary: GLM-5.2 does documentation only,
-    │                                  # never src/ code — read once per session, not refreshed daily
     ├── NUGET_PUBLISH_CHECKLIST.md     # decision recorded (license = MIT), executable checklist for
     │                                  # the gated NuGet-publish item; .csproj edits + pack/push steps.
     │                                  # Closes the "M8 CLOSED" gated item once executed by a code session.
@@ -242,6 +240,11 @@ across sessions and is authoritative when FSDE is cold.
     │                                  # as agent-callable tools (built on the official Microsoft MCP C# SDK v1.0).
     │                                  # Frames the forcing-function question + 5 open design forks; NOT decided.
     │                                  # Nasser's go/no-go; if yes, a code session executes §6.
+    ├── process/                      # agent-operation docs (not user-facing):
+    │   ├── SESSION_HANDOFF.md        # carry-on context — READ FIRST
+    │   ├── GLM_ToDO_Overnight.md     # refreshed daily task list
+    │   └── GLM_DOCUMENTATION_GUIDELINES.md # standing role boundary: GLM-5.2 does documentation only,
+    │                                      # never src/ code — read once per session, not refreshed daily
     └── reactions/                    # verbatim GPT/Claude review rounds
 ```
 
@@ -251,7 +254,7 @@ NexusVerifier-findings freeze decisions, then a broader public-surface audit); H
 docs site, and NuGet-publish readiness are separately deferred, not blockers. **M9 is implemented**
 (layer-1 role-aware directed traversal, `docs/SPECIFICATION.md` §6, `Topos.Hypergraph.Knowledge`)
 — exit criterion met, RLB's `ToposGraphProjection` now consumes it — see
-`docs/SESSION_HANDOFF.md` §4.1 and `docs/DECISIONS.md`'s "M9 IMPLEMENTED" (2026-07-26) entry.
+`docs/process/SESSION_HANDOFF.md` §4.1 and `docs/DECISIONS.md`'s "M9 IMPLEMENTED" (2026-07-26) entry.
 
 ---
 

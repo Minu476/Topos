@@ -1,5 +1,6 @@
 using Topos.Hypergraph;
 using Topos.Hypergraph.Knowledge;
+using Topos.Hypergraph.Living;
 
 namespace Topos.Samples.ChatMemory;
 
@@ -38,7 +39,16 @@ public sealed class ChatMemory
     private readonly VectorIndex _vectorIndex;
     private readonly Dictionary<string, Handle> _entitiesByName = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Each fact's current observation-chain head (docs/USAGE_PATTERNS.md Pattern 10's
+    /// "caller tracks its own head" recommendation) — kept in-process here for simplicity; the
+    /// pattern's own doc notes this could equally be an ordinary <c>PropertyKey&lt;Handle&gt;</c>
+    /// on the fact vertex itself if it needed to round-trip through persistence.
+    /// </summary>
+    private readonly Dictionary<Handle, Handle> _factObservationHeads = new();
+
     private const byte SpeakerRole = 0, MentionedRole = 1, DerivedFromRole = 1, RecallQueryRole = 0, RecallResultRole = 1;
+    private const byte FactObservationEntityRole = 0, FactObservationPreviousRole = 1;
 
     /// <summary>
     /// Roles for a two-member derivation hyperedge (<see cref="RecordDerivation"/>) — distinct
@@ -179,6 +189,35 @@ public sealed class ChatMemory
         var current = _kernel.TryGetProperty(_recallStats, recall, out var existing) ? existing : EdgeStatistics.Initial;
         _kernel.SetProperty(_recallStats, recall, current.Observe(wasUseful));
     }
+
+    /// <summary>
+    /// Records a change to a fact's epistemic status as a new <c>Topos.Hypergraph.Living</c>
+    /// observation, chained onto that fact's prior status changes (if any) — the worked example
+    /// for docs/USAGE_PATTERNS.md Pattern 10's observation-chain pattern. Also updates
+    /// <see cref="_mode"/> directly on <paramref name="fact"/> so <see cref="ModeOf"/> keeps
+    /// answering "what is it now" in O(1); the chain is the separate "how did it get here" audit
+    /// trail — Pattern 10's "keep both" guidance.
+    /// </summary>
+    public Handle RecordFactStatusChange(Handle fact, AssertionMode newMode, DateTimeOffset when)
+    {
+        Handle? previous = _factObservationHeads.TryGetValue(fact, out var head) ? head : null;
+        var observation = _kernel.RecordObservation(
+            fact, FactObservationEntityRole, previous, FactObservationPreviousRole, when);
+
+        _kernel.SetProperty(_mode, observation, newMode);
+        _kernel.SetProperty(_mode, fact, newMode); // current-state cache, unchanged contract for ModeOf
+        _factObservationHeads[fact] = observation;
+        return observation;
+    }
+
+    /// <summary>Newest-first status timeline for a fact, or empty if it was never changed via <see cref="RecordFactStatusChange"/>.</summary>
+    public IReadOnlyList<(AssertionMode Mode, DateTimeOffset RecordedAt)> FactStatusHistory(Handle fact) =>
+        !_factObservationHeads.TryGetValue(fact, out var latest)
+            ? []
+            : [.. _kernel.ObservationHistory(latest, FactObservationPreviousRole)
+                  .Select(o => (
+                      _kernel.TryGetProperty(_mode, o, out var m) ? m : AssertionMode.Hypothesized,
+                      _kernel.RecordedAt(o)!.Value))];
 
     public string? ContentOf(Handle vertex) => _kernel.TryGetProperty(_content, vertex, out var c) ? c : null;
     public string? NameOf(Handle entity) => _kernel.TryGetProperty(_entityName, entity, out var n) ? n : null;

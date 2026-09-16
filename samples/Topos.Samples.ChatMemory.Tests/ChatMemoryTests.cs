@@ -76,6 +76,50 @@ public class ChatMemoryTests
     }
 
     [Fact]
+    public void RecordFactStatusChange_UpdatesCurrentModeAndAppendsToHistory()
+    {
+        // Topos.Hypergraph.Living's observation-chain pattern (docs/USAGE_PATTERNS.md Pattern 10),
+        // worked example: a fact's epistemic status changing from Hypothesized to Asserted.
+        var memory = new ChatMemory();
+        var turn = memory.RecordTurn("user", "I think my flight lands around 6pm.", [0.3f], T0);
+        var fact = memory.RecordExtractedFact(turn, "User's flight arrival: ~6pm", AssertionMode.Hypothesized);
+
+        memory.RecordFactStatusChange(fact, AssertionMode.Asserted, T0.AddMinutes(5));
+
+        // "What is it now" stays O(1) via the existing ModeOf contract.
+        Assert.Equal(AssertionMode.Asserted, memory.ModeOf(fact));
+    }
+
+    [Fact]
+    public void FactStatusHistory_TwoChanges_ReturnsNewestFirstWithModesAndTimestamps()
+    {
+        var memory = new ChatMemory();
+        var turn = memory.RecordTurn("user", "I think my flight lands around 6pm.", [0.3f], T0);
+        var fact = memory.RecordExtractedFact(turn, "User's flight arrival: ~6pm", AssertionMode.Hypothesized);
+
+        memory.RecordFactStatusChange(fact, AssertionMode.Hypothesized, T0);
+        memory.RecordFactStatusChange(fact, AssertionMode.Asserted, T0.AddMinutes(5));
+
+        var history = memory.FactStatusHistory(fact);
+
+        Assert.Equal(2, history.Count);
+        Assert.Equal(AssertionMode.Asserted, history[0].Mode);
+        Assert.Equal(T0.AddMinutes(5), history[0].RecordedAt);
+        Assert.Equal(AssertionMode.Hypothesized, history[1].Mode);
+        Assert.Equal(T0, history[1].RecordedAt);
+    }
+
+    [Fact]
+    public void FactStatusHistory_NeverChanged_ReturnsEmpty()
+    {
+        var memory = new ChatMemory();
+        var turn = memory.RecordTurn("user", "My name is Alice.", [0.1f], T0);
+        var fact = memory.RecordExtractedFact(turn, "User's name: Alice", AssertionMode.Asserted);
+
+        Assert.Empty(memory.FactStatusHistory(fact));
+    }
+
+    [Fact]
     public void RecallSimilarTurns_FindsSemanticallyCloseTurnsFirst()
     {
         var memory = new ChatMemory();

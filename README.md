@@ -11,9 +11,9 @@ provenance.
 
 | | |
 |---|---|
-| **Packages** | `Topos.Hypergraph` (kernel + algorithms) · `Topos.Hypergraph.Persistence` (save/load) · `Topos.Hypergraph.Knowledge` (directed/role-aware traversal) · `Topos.Hypergraph.Mcp` (MCP server for agent tool-calling) |
+| **Packages** | `Topos.Hypergraph` (kernel + algorithms) · `Topos.Hypergraph.Persistence` (save/load) · `Topos.Hypergraph.Knowledge` (directed/role-aware traversal) · `Topos.Hypergraph.Living` (timestamped observation chains) · `Topos.Hypergraph.Mcp` (MCP server for agent tool-calling) |
 | **Target** | .NET 10 (`net10.0`), C# with `Nullable` + `ImplicitUsings` |
-| **Status** | M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done · M9 implemented · M10 (MCP server) implemented. 192 tests pass. |
+| **Status** | M0–M6 implemented · M7 (spectral) deferred by design · M8 API-stability scope done · M9 implemented · M10 (MCP server) implemented · M11 implemented in full (phase 1 GDS-verified, phase 2 HNX/xgi-verified) · M12 (`Living`) implemented. 298 tests pass. |
 | **License** | MIT (decided 2026-07-26 — see `docs/NUGET_PUBLISH_CHECKLIST.md`). |
 
 ---
@@ -117,7 +117,7 @@ from are also kept separately for readers who want a single-topic view:
 | [`docs/PARADOX_COMPRESSION_SEARCH.md`](docs/PARADOX_COMPRESSION_SEARCH.md) | Resolves spec §12 Q1 — the "paradox-compression" citation traced to an unrelated project. |
 | [`docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md`](docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md) | Six API-stability findings from the second real consumer — the M8 input. |
 | [`docs/MCP_SERVER_SPEC.md`](docs/MCP_SERVER_SPEC.md) | The M10 proposal (approved and implemented 2026-07-27) — the forcing-function case, the tool-surface design, and the five §5 forks, four of which Nasser resolved explicitly. |
-| [`docs/SESSION_HANDOFF.md`](docs/SESSION_HANDOFF.md) | Carry-on context across sessions — the first doc any agent reads on launch. |
+| [`docs/process/SESSION_HANDOFF.md`](docs/process/SESSION_HANDOFF.md) | Carry-on context across sessions — the first doc any agent reads on launch. |
 
 ---
 
@@ -161,8 +161,17 @@ deferred pending a forcing consumer or a decision to go public — not in progre
   and blessed 2026-09-12 (Microsoft's official `ModelContextProtocol`
   C# SDK, stdio transport, stateful single-session). See `docs/MCP_SERVER_SPEC.md` for the design
   and `docs/DECISIONS.md`'s "M10 APPROVED AND IMPLEMENTED" entry for the build record.
+- **M11** — phase 1: `Centrality`/`PageRank`/`DirectedScc`, verified against a live Neo4j GDS
+  instance (see `tests/Topos.Tests.GdsOracle` and `docs/ALGORITHM_GAP_LIST.md`). Phase 2: the
+  s-connectivity family (s-connected-components / s-line-graph / s-distance / s-eccentricity /
+  s-diameter), which GDS structurally cannot verify — checked instead against live HyperNetX *and*
+  xgi, two independent implementations of the same definition (`tests/Topos.Tests.HnxOracle`,
+  `docs/HNX_ORACLE_SETUP.md`).
+- **M12** — `Topos.Hypergraph.Living`: timestamped observation chains over the existing primitives,
+  for entities whose state has a history rather than only a present value. No kernel changes.
 
-192 tests pass across the kernel, persistence, sample, Knowledge, Mcp, and GDS-parity suites. Topos is
+298 tests pass across the kernel, persistence, sample, Knowledge, Living, Mcp, and both oracle-parity
+suites (the oracle suites self-skip when their oracle is unreachable). Topos is
 also a live `ProjectReference` in **Rich-Learning-Base**'s V2 codebase, not just a design target —
 see `Learning/ToposGraphProjection.cs` there — with RLB's own suite (346 tests, including live
 Neo4j round-trips) passing against it.

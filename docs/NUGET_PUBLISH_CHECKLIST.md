@@ -8,7 +8,7 @@ license and a public-release timing."*
 
 > **Lane note:** This is an executable checklist, not an applied change. The metadata edits below
 > touch `.csproj` files, which are outside the documentation-only role GLM-5.2 holds in this repo
-> (`docs/GLM_DOCUMENTATION_GUIDELINES.md §3`). A code-authoring session (or Nasser directly)
+> (`docs/process/GLM_DOCUMENTATION_GUIDELINES.md §3`). A code-authoring session (or Nasser directly)
 > executes it. Everything here is concrete: exact edits, exact commands, exact gotchas.
 
 ---

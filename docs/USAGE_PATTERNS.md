@@ -474,6 +474,86 @@ graph. Worked example: `samples/Topos.Samples.ChatMemory.RecordDerivation` +
 
 ---
 
+## Pattern 10 — Living entities: timestamped state history
+
+**When to use:** when an entity's own state changes over time and you need more than "what is it
+now" — you need "what was it, and when did it change." `PropertyKey<T>` is present-only (a
+`SetProperty` call overwrites the previous value); nested reification (Pattern 2) answers "derived
+from what," not "what was this entity's own timeline." This pattern is how to keep that timeline
+without any new kernel storage. Requires the `Topos.Hypergraph.Living` package (M12).
+
+Each state-change is reified as its own observation vertex (`VertexRoles.Edge`), incident to the
+entity it describes and, except at genesis, to the immediately-preceding observation — a
+backward-linked list of snapshots per entity, exactly Pattern 2's "edges as vertices" applied to
+time. `[verified:src=src/Topos.Hypergraph.Living/ObservationChain.cs]`
+
+```csharp
+using Topos.Hypergraph;
+using Topos.Hypergraph.Living;
+
+// Example only — define your own role bytes, per ROLE_CONVENTIONS.md.
+public enum ObservationRole : byte { Entity = 0, Previous = 1 }
+
+var kernel = new HypergraphKernel();
+Handle fact = kernel.CreateVertex(VertexRoles.Edge);
+
+// Track the current head as an ordinary property on the entity — no "find latest" scan needed.
+PropertyKey<Handle> head = kernel.ResolveProperty<Handle>("currentObservation");
+
+Handle obs1 = kernel.RecordObservation(fact, (byte)ObservationRole.Entity, previous: null,
+    (byte)ObservationRole.Previous, DateTimeOffset.UtcNow);
+kernel.SetProperty(head, fact, obs1);
+
+// ... time passes, the fact's status changes ...
+Handle? priorHead = kernel.TryGetProperty(head, fact, out var h) ? h : null;
+Handle obs2 = kernel.RecordObservation(fact, (byte)ObservationRole.Entity, priorHead,
+    (byte)ObservationRole.Previous, DateTimeOffset.UtcNow);
+kernel.SetProperty(head, fact, obs2);
+
+// Walk the full history, newest first.
+IHypergraphQuery query = kernel;
+foreach (Handle o in query.ObservationHistory(obs2, (byte)ObservationRole.Previous))
+{
+    DateTimeOffset? when = kernel.RecordedAt(o);
+    // ... read whatever PropertyKey<T> properties this domain attached to `o` — an AssertionMode,
+    // an EdgeStatistics confidence, a position, anything (Pattern 6's LearnableEdge included) ...
+}
+```
+
+**Keep both a "current" property and the observation chain — they answer different questions.**
+Most consumers still want to `SetProperty` the entity's own property directly for O(1) "what is it
+now" reads, *and* append an observation for O(n) "how did it get here" history. These aren't
+redundant: the property is the cache, the chain is the audit trail.
+`[verified:src=src/Topos.Hypergraph.Living/ObservationChain.cs:9-15]`
+
+`ObservationHistory` walks **newest → oldest** — the only direction a backward-linked list supports
+without buffering — and is lazy (`yield return`), so `.Take(5)`/`.TakeWhile(...)` on the returned
+sequence stops early without materializing the whole chain. Call `.Reverse()` on a materialized list
+if you want chronological order.
+
+> **`Topos.Hypergraph.Living` deliberately does not offer a "find the latest observation for this
+> entity" method.** "Latest" has no unambiguous answer from topology alone — it would need either an
+> O(n) reverse-index scan the library would have to build and maintain, or a fragile timestamp
+> tie-break (clock skew, replayed/imported history, or two observations sharing a timestamp are all
+> ambiguous). Track the head yourself instead, as the example above does — an ordinary
+> `PropertyKey<Handle>` on the entity, updated on every `RecordObservation` call. This costs no new
+> API surface and round-trips through `Topos.Hypergraph.Persistence` for free, since it's just
+> another property. Same discipline `ROLE_CONVENTIONS.md` already applied when it declined to add a
+> role registry for a problem an explicit caller-side pattern solves just as well.
+
+**Marking an observation dormant does not "retire" it from history.** Invariant 1 (dormant vertices
+are tombstoned, never deleted) means `SetDormant` on an old observation leaves it fully resolvable
+in `ObservationHistory` walks — dormancy and history are orthogonal. If you want to stop walking
+past some point, truncate the walk itself (`.TakeWhile(...)`, or start from an earlier head).
+`SetDormant`/`Reactivate` stay meaningful for the *entity* vertex (e.g. "no longer tracked") — that
+is unrelated to, and does not interact with, its observation chain.
+
+Worked example — a fact's epistemic status (`AssertionMode`) changing from `Hypothesized` to
+`Asserted` over the course of a conversation: `samples/Topos.Samples.ChatMemory.RecordFactStatusChange`
+/ `.FactStatusHistory`. `[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs]`
+
+---
+
 ## Where to go next
 
 - **Look up a type used above** → [`API_REFERENCE.md`](API_REFERENCE.md).

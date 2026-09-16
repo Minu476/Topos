@@ -1,6 +1,6 @@
-# Session Handoff — Topos (M0–M6 implemented; M8 API-stability scope done; M9 implemented; M10 implemented)
+# Session Handoff — Topos (M0–M6 implemented; M8 API-stability scope done; M9 implemented; M10 implemented; M11 phase 1 implemented; published to NuGet)
 
-**Last updated:** 2026-07-27
+**Last updated:** 2026-08-04
 **Purpose:** Comprehensive briefing so the next session (in Topos, possibly with a different
 agent) can resume without re-deriving context. **This is the first document to read.**
 
@@ -18,7 +18,9 @@ purpose-fit for AI / agent memory. The name (*topos* = Greek for "place/location
 than neural-network weights.
 
 **Status: M0–M6 implemented and tested. M7 (spectral) deferred by design. M8's API-stability
-scope is done. M9 is implemented (2026-07-26). M10 is implemented (2026-07-27).** — Nasser
+scope is done. M9 is implemented (2026-07-26). M10 is implemented (2026-07-27). M11 phase 1 is
+implemented (2026-07-30/31). Topos is published to NuGet (2026-08-02, then version-scheme
+corrected 2026-08-03).** — Nasser
 dogfooded via Rich-Learning-Base first, then a second real consumer (NexusVerifier) produced six
 concrete API-stability findings; resolving those plus a broader public-surface audit became M8's
 two passes, both done 2026-07-25 (`docs/DECISIONS.md`'s three 2026-07-25 entries, the last one an
@@ -34,7 +36,12 @@ kernel as agent-callable tools) was proposed overnight 2026-07-26 (GLM-5.2, `doc
 and **approved and built the next day, 2026-07-27**: 18 tools over the official
 `ModelContextProtocol` C# SDK, stdio transport, stateful single-session, 13 new tests, dogfooded
 via raw JSON-RPC over the real transport (agent-in-the-loop dogfood still pending a Claude Code
-restart). See §4 for what all of this means concretely and §5 for what to do about it.
+restart). **M11 phase 1** (`Centrality`/`PageRank`/`DirectedScc`, GDS-verified) shipped
+2026-07-30/31 — phase 2 (s-connected-components/s-line-graph/s-diameter) needs a separate HNX
+oracle and is not scheduled. **Topos was published to NuGet** 2026-08-02, then its version
+scheme was corrected 2026-08-03 (undotted `-mN` prerelease tags sort wrong under SemVer; fixed to
+dotted `-m.N` plus a base-version bump to clear the mis-ordered published set — see §4.1a). See
+§4 for what all of this means concretely and §5 for what to do about it.
 
 Two things worth internalizing before anything else:
 - **The spec was approved and implemented — this is not still the investigation phase.**
@@ -57,6 +64,9 @@ Two things worth internalizing before anything else:
 ├── README.md                         # public-facing intro — kept in sync with real status
 ├── AGENTS.md                         # workspace instructions — read every session
 ├── Topos.sln
+├── .github/workflows/
+│   ├── build-test.yml                # CI: restore/build/test on every push+PR (new 2026-08-04)
+│   └── publish-nuget.yml             # manual-dispatch: dry-run/publish/unlist to NuGet
 ├── src/
 │   ├── Topos.Hypergraph/             # the kernel (M0–M6, see §3)
 │   ├── Topos.Hypergraph.Persistence/ # tiered LRU+snapshot persistence (M4 package split)
@@ -79,16 +89,17 @@ Two things worth internalizing before anything else:
     │                                  # anchors). New 2026-07-26. The single doc to read or hand to a
     │                                  # reviewer/GPT (solves the "GPT can't navigate the GitHub file tree"
     │                                  # problem — one file, no navigation needed). Updated for NuGet (MIT).
+    │                                  # Documentation.{html,pdf} are generated from this file via
+    │                                  # build_pdf.py and are now gitignored (not committed) — regenerate
+    │                                  # locally rather than expecting them on disk after a fresh clone.
     ├── CONCEPTS.md, GETTING_STARTED.md, API_REFERENCE.md, USAGE_PATTERNS.md  # USER-FACING docs (new
     │                                  # 2026-07-26, GLM-5.2): the mental model, a runnable walkthrough,
     │                                  # a hand-written public-API catalog, and a usage-patterns guide.
     │                                  # README.md is the front door. Documentation.md combines all four.
     │                                  # The rest of docs/ predates them and is investigation/spec/process.
     ├── NUGET_PUBLISH_CHECKLIST.md     # decision recorded 2026-07-26 (license = MIT); executable
-    │                                  # checklist for the gated NuGet-publish item. Resolves the
-    │                                  # "waits on Nasser deciding a license" item in "M8 CLOSED"
-    │                                  # (docs/DECISIONS.md) — execution is .csproj edits + dotnet pack/push,
-    │                                  # outside GLM-5.2's doc-only lane; a code session executes it.
+    │                                  # checklist for the NuGet-publish item — **executed** 2026-08-02,
+    │                                  # then corrected 2026-08-03 for the version-ordering bug (§4.1a).
     ├── MCP_SERVER_SPEC.md             # M10 (proposed overnight 2026-07-26, APPROVED AND IMPLEMENTED
     │                                  # 2026-07-27): MCP server exposing the kernel + Knowledge package as
     │                                  # 18 agent-callable tools, built on Microsoft's official
@@ -96,6 +107,10 @@ Two things worth internalizing before anything else:
     │                                  # "MIT" claim was corrected). Nasser approved + resolved all four §5
     │                                  # forks that gate v1 scope; see docs/DECISIONS.md's "M10 APPROVED AND
     │                                  # IMPLEMENTED" entry for the full build record.
+    ├── ALGORITHM_SURVEY.md, ALGORITHM_GAP_LIST.md, ALGORITHM_SPEC.md  # M11 input (new 2026-07-30):
+    │                                  # field survey (GDS/HNX/SH.jl/xgi), the concrete gap inventory
+    │                                  # with per-item verification tiers, and the must/good/no-need
+    │                                  # bucketing + impl spec that scoped M11 phase 1.
     ├── BASE_INVESTIGATION.md, AGENT_MEMORY_COMPETITORS.md, SPECIFICATION.md, DECISIONS.md
     ├── M0_BENCHMARK_RESULTS_2026-07-24.md   # measured benchmark gate, COW→RWLS correction
     ├── PARADOX_COMPRESSION_SEARCH.md        # resolves spec §12 Q1
@@ -103,13 +118,21 @@ Two things worth internalizing before anything else:
     ├── GDS_ORACLE_SETUP.md                  # GDS Docker setup + the Neo4j credential incident
     ├── NEXUS_VERIFIER_INTEGRATION_FINDINGS.md  # M8 input: 6 findings, resolved 2026-07-25
     ├── ROLE_CONVENTIONS.md                  # M8: documented role-byte-enum pattern (finding #3)
-    ├── SESSION_HANDOFF.md                   # this file
+    ├── process/                             # agent-operation docs, moved out of docs/ 2026-08-04
+    │   │                                      # (not user-facing — kept separate from the
+    │   │                                      # investigation/spec/reference docs above)
+    │   ├── SESSION_HANDOFF.md               # this file
+    │   ├── GLM_ToDO_Overnight.md            # refreshed-daily overnight task list
+    │   └── GLM_DOCUMENTATION_GUIDELINES.md  # standing GLM-5.2 role boundary (docs-only, never src/)
     └── reactions/                            # verbatim GPT/Claude review rounds
 ```
 
-192 tests pass across the kernel, persistence, sample, Knowledge, Mcp, and GDS-parity suites (up
-from 179 before 2026-07-27's M10 build — 13 new tests in `Topos.Hypergraph.Mcp.Tests`). Build:
-`dotnet build Topos.sln`. Test: `dotnet test Topos.sln`.
+233 tests pass across the kernel, persistence, sample, Knowledge, Mcp, and GDS-parity suites (up
+from 179 before M10 — M10 added 13 Mcp tests, M11 added the Centrality/PageRank/DirectedScc
+algorithms plus their GDS-parity tests). Build:
+`dotnet build Topos.sln`. Test: `dotnet test Topos.sln`. CI now runs both on every push/PR to
+`main` via `.github/workflows/build-test.yml` (new 2026-08-04) — previously the repo had no
+automated check, only the manual NuGet-publish workflow.
 
 ---
 
@@ -266,11 +289,52 @@ APPROVED AND IMPLEMENTED" entry.
   `NEXUS_NEO4J_DATABASE` default, the Gemini env-var name). All uncommitted there, awaiting
   Nasser's review.
 
+**M11 phase 1 (2026-07-30/31):** `Centrality`, `PageRank`, `DirectedScc` — new algorithms scoped
+from `docs/ALGORITHM_GAP_LIST.md` (itself derived from `docs/ALGORITHM_SURVEY.md`'s field
+comparison against GDS/HNX/SH.jl/xgi) and verified against the same live Neo4j GDS oracle used
+since M1. Full suite went from 192 to 233 (ChatMemory sample tests grew 9→13; GDS-oracle suite
+went from soft-skipping to 15/15 live). M11 phase 2 (s-connected-components/s-line-graph/
+s-diameter) needs a separate HNX-based oracle and is **not scheduled** — don't start it without
+that oracle or a new forcing signal. See `docs/DECISIONS.md`'s M11 entries for the full record.
+
+**NuGet publish, executed then corrected (2026-08-02/03):** `docs/NUGET_PUBLISH_CHECKLIST.md`'s
+checklist was executed — Topos is now actually live on nuget.org, not just publish-ready. A
+version-ordering bug was then found and fixed: the milestone-prerelease convention `0.1.0-mN`
+sorts wrong under SemVer 2.0 (an undotted `m11` compares as one identifier, so `m11 < m8`
+character-by-character), which made newly-published `0.1.0-m11` packages unreachable via
+`dotnet add package --prerelease` — it kept resolving to the older `m8`. Fixed by dotting the
+suffix (`-m.N`, compared numerically) **and** bumping the base version `0.1.0` → `0.2.0`, since
+dotting alone still sorts below every already-published undotted tag. The mis-ordered
+`0.1.0-m8`/`-m9`/`-m11` versions can't be deleted or republished, only unlisted (not done yet —
+`.github/workflows/publish-nuget.yml` gained an `unlist` mode 2026-08-03 for when that's wanted).
+Full record: `docs/DECISIONS.md`'s 2026-08-03 "NUGET VERSION SCHEME CORRECTED" entry.
+
+**This session (Opus 5, 2026-08-04):**
+- **Doc reorg:** moved the three agent-operation docs (`SESSION_HANDOFF.md`,
+  `GLM_ToDO_Overnight.md`, `GLM_DOCUMENTATION_GUIDELINES.md`) into a new `docs/process/`
+  subdirectory, separating them from the user-facing/investigation docs that make up the rest of
+  `docs/`. Updated every cross-reference across `AGENTS.md`, `README.md`, `docs/DECISIONS.md`,
+  `docs/MCP_SERVER_SPEC.md`, `docs/NUGET_PUBLISH_CHECKLIST.md`, `docs/AGENT_MEMORY_COMPETITORS.md`,
+  `docs/SPECIFICATION.md`, and the moved files' own internal self-references — verified no
+  dangling `docs/SESSION_HANDOFF.md`-style old paths remain anywhere in tracked docs.
+- **Stopped tracking generated doc artifacts:** deleted `docs/Documentation.html` and
+  `docs/Documentation.pdf` from git and added both to `.gitignore` — they're build output of
+  `docs/build_pdf.py` from `docs/Documentation.md`, not source; regenerate locally rather than
+  expecting them after a fresh clone.
+- **Added `.github/workflows/build-test.yml`** — CI now runs `dotnet restore`/`build`/`test` on
+  every push to `main` and every PR. Previously the only workflow was the manual NuGet-publish
+  one, so correctness rested entirely on local runs; the GDS-oracle project self-skips its
+  live-Neo4j tests when no oracle is reachable (a 3s connectivity probe), so this needed no
+  service container to stay green in CI.
+- **Bumped stale status references** to the current true state (233 tests, M11 mentioned) in
+  `README.md` and this handoff. All of the above was uncommitted at the time this handoff section
+  was written — see the top-level git status before assuming it's landed.
+
 ---
 
 ## 4. The three things that matter most for the next session
 
-### 4.1 Roadmap state: M6 done, M7 skip, M8's API-stability scope is done (closed 2026-07-25), M9 implemented (2026-07-26), M10 implemented (2026-07-27)
+### 4.1 Roadmap state: M6 done, M7 skip, M8's API-stability scope is done (closed 2026-07-25), M9 implemented (2026-07-26), M10 implemented (2026-07-27), M11 phase 1 implemented (2026-07-30/31)
 
 **2026-07-25 update:** the six `docs/NEXUS_VERIFIER_INTEGRATION_FINDINGS.md` findings were
 resolved this session — see `docs/DECISIONS.md`'s first 2026-07-25 entry for the full list of
@@ -340,6 +404,31 @@ verified to behave exactly per the kernel's documented semantics. **Not yet dogf
 live agent session** — that's the one item left open, and it needs Nasser to restart Claude Code
 so this session (or the next one) picks up the new `topos` `.mcp.json` entry.
 
+**M11 phase 1 was scoped from a field survey and implemented 2026-07-30/31** — see §3's "M11
+phase 1" paragraph above and `docs/DECISIONS.md`'s M11 entries. `Centrality`, `PageRank`, and
+`DirectedScc` are new, GDS-verified additions to the kernel's algorithm surface. **Phase 2**
+(s-connected-components, s-line-graph, s-diameter — the s-walk-family gaps `docs/
+ALGORITHM_GAP_LIST.md` also flags as "must") needs a separate HNX-based oracle before it can be
+built the same GDS-verified way the rest of the algorithm surface has been; it is **not
+scheduled**. Cross-repo adoption (RLB's `ToposGraphProjection`, NexusVerifier's chainer actually
+consuming the new algorithms) is also not done — different repos, out of scope for the M11
+session itself.
+
+### 4.1a NuGet: published, then the version scheme was corrected — don't re-litigate
+
+Topos is live on nuget.org as of 2026-08-02. A real defect surfaced the next day: the
+`0.1.0-mN` prerelease convention sorts wrong under SemVer (undotted `m11 < m8` lexically), which
+made `dotnet add package --prerelease` resolve to a stale version instead of the newest one. Fixed
+2026-08-03 by dotting the suffix (`-m.N`) and bumping the base version to `0.2.0` (dotting alone
+doesn't clear the previously-published, mis-ordered set — see `docs/DECISIONS.md`'s 2026-08-03
+entry for the full mechanics). **Current published-package state:** `Topos.Hypergraph` and
+`Topos.Hypergraph.Knowledge` are at `0.2.0-m.11`; `Topos.Hypergraph.Persistence` at `0.2.0-m.8`;
+`Topos.Hypergraph.Mcp` is versioned (`0.2.0-m.10`) but has never actually been pushed. **Open,
+not done:** unlisting the mis-ordered `0.1.0-m8`/`-m9`/`-m11` versions (the workflow supports it
+now via its `unlist` mode; nobody has asked for it yet) and actually publishing
+`Topos.Hypergraph.Mcp`. Don't re-derive the version-ordering fix or second-guess the dot
+convention — it's been verified against NuGet's own `VersionComparer`, not eyeballed.
+
 ### 4.2 The Neo4j credential pattern, if you ever touch that instance
 
 Not Topos-specific, but if a future session needs to interact with the shared local Neo4j
@@ -370,14 +459,21 @@ methodology that should gate any new attempt, per the project's own stated lesso
 
 - **If Nasser wants to continue the roadmap** → M8's API-stability scope is closed (2026-07-25);
   what's left there is gated (HIF/docs-site need a forcing consumer or go-public decision;
-  NuGet-publish needs a license choice). **M9 is implemented and its exit criterion is met**
-  (2026-07-26) — `Topos.Hypergraph.Knowledge` exists, RLB's `ToposGraphProjection` consumes it, and
-  RLB's suite passes unchanged. **M10 is implemented** (2026-07-27) — `Topos.Hypergraph.Mcp`
-  exists, dogfooded via raw JSON-RPC; the one open item is a live-agent dogfood pass (see §4.1),
-  which just needs Claude Code restarted to pick up the new `.mcp.json` entry, not more building.
-  There is no pending M9 or M10 work otherwise; a next roadmap slice would be a new milestone
-  (M11+) with its own forcing signal. M7 stays skipped absent a forcing requirement. Don't restart
-  API-stability work without a new forcing signal.
+  NuGet-publish is **no longer gated — it's done**, see below). **M9 is implemented and its exit
+  criterion is met** (2026-07-26) — `Topos.Hypergraph.Knowledge` exists, RLB's
+  `ToposGraphProjection` consumes it, and RLB's suite passes unchanged. **M10 is implemented**
+  (2026-07-27) — `Topos.Hypergraph.Mcp` exists, dogfooded via raw JSON-RPC; the one open item is a
+  live-agent dogfood pass (see §4.1), which just needs Claude Code restarted to pick up the new
+  `.mcp.json` entry, not more building. **M11 phase 1 is implemented** (2026-07-30/31) —
+  `Centrality`/`PageRank`/`DirectedScc`, GDS-verified; phase 2 needs an HNX oracle and is not
+  scheduled (see §4.1a). A next roadmap slice would be M11 phase 2 (with that oracle) or a new
+  milestone with its own forcing signal. M7 stays skipped absent a forcing requirement. Don't
+  restart API-stability work without a new forcing signal.
+- **If Nasser wants to publish or manage NuGet packages further** → the checklist is already
+  executed and the version-ordering bug already fixed (§4.1a). What's left is optional: unlisting
+  the mis-ordered `0.1.0-m8`/`-m9`/`-m11` versions (workflow supports it, nobody's asked) and
+  publishing `Topos.Hypergraph.Mcp` for the first time. Don't re-run the checklist from scratch or
+  re-derive the version-ordering analysis — both are settled.
 - **If Nasser wants to continue dogfooding via RLB** → `tools/ToposHyperedgeDemo` in the RLB
   repo is the existing hands-on entry point; RLB's real Neo4j data has no hyperedges yet, which
   is itself worth discussing (is that expected, or a sign RLB's HyperEdge model isn't actually
@@ -388,18 +484,15 @@ methodology that should gate any new attempt, per the project's own stated lesso
   whichever MCP-aware agent) so it picks up the `topos` entry in `.mcp.json`, then create a couple
   of vertices, add an incidence, and call `bfs`/`role_filtered_members` — the literal M10 exit
   criterion, only partially demonstrated so far (raw JSON-RPC, not a live agent).
-- **If Nasser wants to commit and/or go public** → ⚠️ **nothing from this session or Opus 5's M10
-  work is committed yet.** The working tree has substantial uncommitted state: M9 (build +
-  RLB-integration not yet committed either, last commit is `a3a2cd8`), M10 (src + tests + sample +
-  .mcp.json + 5 doc-file changes), the entire 2026-07-26/27 documentation push (4 new docs +
-  Documentation.md + build_pdf.py + NUGET_PUBLISH_CHECKLIST + the regenerated PDF), and the
-  NexusVerifier cross-project docs (separate repo). **Two things to do before committing Topos:**
-  (1) scrub the local absolute path in `.mcp.json`'s new `topos` entry (the same class of
-  path-leak flagged in the earlier security pre-flight); (2)
-  decide what to do with `.zcode/` — it's not in `.gitignore` and shouldn't be committed.
-  **NexusVerifier's working tree also has unrelated untracked items** (`phase4_results/`,
-  `ToDoList/`, `fsde-model-catalog-fix/`) — don't sweep those into a doc commit; stage
-  explicitly.
+- **If Nasser wants to commit and/or go public** → **Topos is already public and already
+  committed through M11 phase 1 + the NuGet publish/version-fix work** (last commit as of this
+  writing: `7e0d18c`, "add unlist mode to the NuGet workflow") — the large uncommitted-state
+  warning that used to live here (M9/M10/the doc push all pending at once) is stale; all of that
+  landed weeks ago. **What's actually uncommitted right now** is just this session's docs reorg
+  (`docs/process/` move + cross-reference updates across `AGENTS.md`/`README.md`/several `docs/*`
+  files), the `docs/Documentation.{html,pdf}` untracking + `.gitignore` entries, and the new
+  `.github/workflows/build-test.yml` — all verified consistent (no dangling old-path references,
+  `dotnet build`/`dotnet test` both green, 233/233 passing) and ready to commit as-is.
 - **If Nasser wants to continue the NexusVerifier documentation thread** → he's currently reading
   the 5 docs I wrote at `~/Projects/NexusVerifier/docs/` (CONCEPTS, GETTING_STARTED,
   CLI_REFERENCE, architecture, CONFIGURATION). Feedback may surface revisions. Three known follow-
@@ -437,7 +530,7 @@ methodology that should gate any new attempt, per the project's own stated lesso
    just because the tests pass. Synthetic test coverage and unit-test scenarios are solid; real
    production data exercising the hyperedge path specifically is not yet demonstrated.
 7. **GLM-5.2's role in this repo is now a standing, enforced boundary, not an informal norm** —
-   `docs/GLM_DOCUMENTATION_GUIDELINES.md` (new 2026-07-26): documentation only, never `src/` code,
+   `docs/process/GLM_DOCUMENTATION_GUIDELINES.md` (new 2026-07-26): documentation only, never `src/` code,
    including doc comments (a stricter line than a past session's XML-doc-coverage pass, which did
    touch `.cs` files — that practice is now retired). If a future session sees GLM edit anything
    under `src/`/`tests/`/`samples/`/`benchmarks/`/`tools/`, that's a violation of this guideline,
@@ -447,8 +540,12 @@ methodology that should gate any new attempt, per the project's own stated lesso
 
 ## 7. Open practical items for Nasser
 
-- **Git: done.** Topos is a git repo, pushed to `github.com/Minu476/Topos` (private). Nothing
-  outstanding here.
+- **Git: done.** Topos is a git repo, pushed to `github.com/Minu476/Topos`, **public** (went
+  public 2026-07-29, ahead of the NuGet publish). Nothing outstanding here.
+- **NuGet: done, with one loose end.** Published 2026-08-02, version-ordering bug fixed
+  2026-08-03 (§4.1a). `Topos.Hypergraph.Mcp` is versioned but never actually pushed; the
+  mis-ordered pre-fix versions are unlisted-but-not-yet-unlisted (workflow supports it, nobody's
+  asked). Neither blocks anything — optional cleanup only.
 - **The Medium piece on Kuzu's storage engine** (mentioned in older handoffs, HTTP 403 on
   fetch) — still unread, still potentially useful before any M4-adjacent persistence work
   resumes, but M4 is done and nothing is currently blocked on it. Low priority.

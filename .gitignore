@@ -46,3 +46,7 @@ BenchmarkDotNet.Artifacts/
 *-report.html
 *-report.csv
 *-report-grep.md
+
+## Generated docs artifacts (regenerate via docs/build_pdf.py; not tracked)
+docs/Documentation.html
+docs/Documentation.pdf

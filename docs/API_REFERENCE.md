@@ -783,6 +783,71 @@ kernel.AddIncidence(edge, target, ChainerRole.Target, ordinal: 2);
 
 ---
 
+## Living — `Topos.Hypergraph.Living`
+
+Layer-1 timestamped observation-chain / state-history convenience. M12. A separate package (own
+assembly); pure consumer of `IHypergraphQuery`/`HypergraphKernel` — **no kernel changes.** Fills the
+one real gap in the "make a Topos hypergraph live/adaptive" wishlist that wasn't already covered by
+existing primitives: `PropertyKey<T>` is present-only, and nested reification answers "derived from
+what," not "what was this entity's own timeline." `[verified:docs=docs/DECISIONS.md's M12 entry]`
+
+### `ObservationChain`
+
+```csharp
+public static class ObservationChain
+{
+    // Reifies one state-change as a new edge-vertex, incident to entity (entityRole, ordinal 0) and,
+    // when previous is given, to that prior observation (previousRole, ordinal 1). Stamps recordedAt
+    // under this package's own PropertyKey<DateTimeOffset>. Returns the new observation's Handle.
+    public static Handle RecordObservation(this HypergraphKernel kernel, Handle entity, byte entityRole, Handle? previous, byte previousRole, DateTimeOffset recordedAt);
+
+    // The DateTimeOffset RecordObservation stamped on `observation`, or null if it was never created via RecordObservation.
+    public static DateTimeOffset? RecordedAt(this HypergraphKernel kernel, Handle observation);
+
+    // One-hop: the entity `observation` describes — the member holding entityRole. Null if none found.
+    public static Handle? EntityOfObservation(this IHypergraphQuery graph, Handle observation, byte entityRole);
+
+    // One-hop: `observation`'s immediate predecessor, or null at genesis.
+    public static Handle? PreviousObservation(this IHypergraphQuery graph, Handle observation, byte previousRole);
+
+    // Lazy, newest → oldest, starting at `latest` inclusive. Throws InvalidOperationException on a
+    // detected cycle — a well-formed chain (built only via RecordObservation) never revisits a vertex.
+    public static IEnumerable<Handle> ObservationHistory(this IHypergraphQuery graph, Handle latest, byte previousRole);
+}
+```
+
+Each observation is a reified edge-vertex (spec §7 pattern 12, "edges as vertices," applied to time),
+incident to the entity it describes and, except at genesis, to its immediate predecessor — a
+backward-linked list. Walking is newest → oldest only (a backward-linked list can't walk forward
+without buffering the whole chain), and lazy (`yield return`), so a caller can stop early without
+materializing the whole chain. `[verified:src=src/Topos.Hypergraph.Living/ObservationChain.cs]`
+
+**No `FindLatestObservation` method, by design.** "Latest" has no topology-only answer without
+either an O(n) scan or trusting timestamps as an ambiguous tie-breaker; track the head as an
+ordinary `PropertyKey<Handle>` on the entity instead (see `USAGE_PATTERNS.md` Pattern 10) — zero new
+API surface, and it round-trips through `Topos.Hypergraph.Persistence` for free since it's just
+another property.
+
+**No library-shipped role enum**, matching `DirectedTraversal`'s exact style — `entityRole`/
+`previousRole` are plain `byte`; the library takes no position on what they mean.
+`USAGE_PATTERNS.md` Pattern 10 shows a documentation-only example enum, the same status as the
+README's `TripRole`.
+
+`RecordObservation`/`RecordedAt` require a concrete `HypergraphKernel` (property reads/writes aren't
+on `IHypergraphQuery`); `EntityOfObservation`/`PreviousObservation`/`ObservationHistory` are
+`IHypergraphQuery`-typed and work over a `FilteredView`/`UnionView` too — same split
+`DirectedTraversal` vs. `RoleExtensions.AddIncidence<TRole>` already uses.
+
+Marking an observation dormant (`HypergraphKernel.SetDormant`) does **not** remove it from
+`ObservationHistory` walks — Invariant 1 (dormant vertices are tombstoned, never deleted) means
+dormancy and history are orthogonal concerns. Truncate the walk itself (`.TakeWhile(...)`) to stop
+early instead.
+
+Worked example: `samples/Topos.Samples.ChatMemory.RecordFactStatusChange` / `.FactStatusHistory`.
+`[verified:src=samples/Topos.Samples.ChatMemory/ChatMemory.cs]`
+
+---
+
 ## Internal types — not public API
 
 These exist behind `InternalsVisibleTo` (granted to `Topos.Hypergraph.Tests` and

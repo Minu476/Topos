@@ -41,7 +41,7 @@ multilingual-NLP research line (Hash-X), unrelated to graph or hypergraph struct
 
 ## Why the original handoff conflated it with RLB
 
-`docs/SESSION_HANDOFF.md`'s original §4.1 referenced a "paradox-compression finding" as the
+`docs/process/SESSION_HANDOFF.md`'s original §4.1 referenced a "paradox-compression finding" as the
 empirical opener for Topos — in a context discussing RLB's `HyperEdge.cs`. That conflation is now
 explained: "paradox-compression" is a real, memorable phrase from your own patent portfolio, and
 it's easy to see how a session summarizing across projects could misattribute it to RLB's

@@ -590,7 +590,7 @@ confirms from the consumer side. `[verified:docs=docs/AGENT_MEMORY_COMPETITORS.m
 The Medium piece "I Analyzed 163K Lines of Kuzu's Codebase — Here's Why Apple Wanted It"
 returned HTTP 403 to fetch. It may contain deeper architectural detail on Kuzu's storage engine
 than the file-level reading in `BASE_INVESTIGATION.md §3.8`. **Recommended reading before M4.**
-`[verified:docs=docs/SESSION_HANDOFF.md §7]`
+`[verified:docs=docs/process/SESSION_HANDOFF.md §7]`
 
 ---
 

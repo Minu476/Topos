@@ -26,8 +26,8 @@ current status; the header above is authoritative.
 
 > **Lane note:** This is a design proposal, not an applied change. Implementing it is C# code under
 > a new `src/Topos.Hypergraph.Mcp/` package — outside the documentation-only role GLM-5.2 holds in
-> this repo (`docs/GLM_DOCUMENTATION_GUIDELINES.md §3`). A code-authoring session (Claude/Sonnet,
-> the code-authoring role per `docs/SESSION_HANDOFF.md`) executes this; the implementation steps in
+> this repo (`docs/process/GLM_DOCUMENTATION_GUIDELINES.md §3`). A code-authoring session (Claude/Sonnet,
+> the code-authoring role per `docs/process/SESSION_HANDOFF.md`) executes this; the implementation steps in
 > §6 are concrete enough to do so without further design.
 
 ---
@@ -75,7 +75,7 @@ Look at the existing public surface — every line is a tool an agent would plau
 
 There is **no new graph logic to design.** The work is mapping types (`Handle` ↔ JSON, `byte` role ↔
 int, generic `<T>` ↔ a tagged-union property value) and writing the JSON schemas. The kernel's
-primitives already exist and are covered by the 179-test suite. `[verified:docs=docs/SESSION_HANDOFF.md §2]`
+primitives already exist and are covered by the 179-test suite. `[verified:docs=docs/process/SESSION_HANDOFF.md §2]`
 
 ### 2.3 The "kernel records; it does not judge" philosophy maps cleanly
 
@@ -407,7 +407,7 @@ go/no-go, not before.
   cited the M5/M9 falsifiability pattern), framed the design space, stated the open forks with
   tentative leans, wrote a concrete-enough v1 scope for a code session to execute.
 - **Did not:** flip any 🟡 to 🔒, declare M10 started, decide any of the §5 forks, write any code,
-  or commit anything. Per `docs/GLM_DOCUMENTATION_GUIDELINES.md §4`, all of those are out of scope
+  or commit anything. Per `docs/process/GLM_DOCUMENTATION_GUIDELINES.md §4`, all of those are out of scope
   for this role. This document is for Nasser to read fresh and decide on.
 
 ---

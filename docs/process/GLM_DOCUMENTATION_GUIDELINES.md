@@ -1,9 +1,9 @@
 # GLM-5.2 Documentation Guidelines — a standing role boundary
 
 **For:** GLM-5.2 (running in ZCode), every session in this repository, from now on.
-**Status:** Standing guideline — unlike `docs/GLM_ToDO_Overnight.md` (refreshed daily, a task
+**Status:** Standing guideline — unlike `docs/process/GLM_ToDO_Overnight.md` (refreshed daily, a task
 list), this file does not change session to session. Read it once per session start, alongside
-`AGENTS.md` and `docs/SESSION_HANDOFF.md`.
+`AGENTS.md` and `docs/process/SESSION_HANDOFF.md`.
 **Author:** Sonnet 5, 2026-07-26, on Nasser's request for a strict documentation-only role for
 GLM-5.2 in this repo.
 
@@ -21,7 +21,7 @@ it** (§8) rather than making the change yourself.
 
 ## 2. Why this boundary exists
 
-- **It's already this project's real history, made explicit.** `docs/SESSION_HANDOFF.md`'s
+- **It's already this project's real history, made explicit.** `docs/process/SESSION_HANDOFF.md`'s
   provenance note records that the investigation docs and original spec draft were "authored in
   ZCode by GLM-5.2 under a source-verification discipline," while implementation has been
   Claude's. This guideline doesn't invent a new split — it locks in the one that already exists,
@@ -29,7 +29,7 @@ it** (§8) rather than making the change yourself.
 - **Provenance stays legible.** When code and docs are edited by strictly separated roles, anyone
   reading `git log` later can tell what kind of change a commit is without archaeology.
 - **It closes the exact gap the project's own review-process critique flagged.** A past honest
-  review (`docs/SESSION_HANDOFF.md` §6.2) found that "two independent reviewers approved this" in
+  review (`docs/process/SESSION_HANDOFF.md` §6.2) found that "two independent reviewers approved this" in
   `docs/reactions/`/`docs/DECISIONS.md` was actually one operator running multiple AI personas —
   real engineering signal, but not the independent validation it was framed as. A strict,
   enforced role boundary (documentation vs. implementation) is a harder guarantee than an
@@ -45,7 +45,7 @@ it** (§8) rather than making the change yourself.
 
 **Not allowed, ever, including "just a comment"**:
 - Any `.cs` file under `src/`, `tests/`, `samples/`, `benchmarks/`, or `tools/` — this includes
-  XML doc comments (`///`). A past session (`docs/GLM_ToDO_Overnight.md`'s P4 task) had GLM do an
+  XML doc comments (`///`). A past session (`docs/process/GLM_ToDO_Overnight.md`'s P4 task) had GLM do an
   XML-doc-coverage pass directly inside `src/Topos.Hypergraph/`; under this guideline that
   practice stops. If you find an XML-doc gap, write the proposed doc text into a findings-style
   doc in `docs/` (or the current overnight file's report section) for a code-authoring session
@@ -56,13 +56,13 @@ it** (§8) rather than making the change yourself.
 
 ## 4. What GLM may decide vs. must flag instead of deciding
 
-Same discipline `docs/GLM_ToDO_Overnight.md` §1 already sets for task work, generalized into a
+Same discipline `docs/process/GLM_ToDO_Overnight.md` §1 already sets for task work, generalized into a
 standing rule:
 
 - **May:** correct a stale fact in an existing doc (a wrong test count, an out-of-date status
   line, a broken cross-reference) — but only after independently verifying the correction against
   the actual repo state (`git log`, a real `dotnet test` run, the file actually existing), never
-  by trusting another doc's self-description. `docs/SESSION_HANDOFF.md` §6.1 exists precisely
+  by trusting another doc's self-description. `docs/process/SESSION_HANDOFF.md` §6.1 exists precisely
   because older docs in this repo have been wrong about "no code yet" — don't propagate that
   failure mode into a new doc.
 - **May:** draft new investigation, survey, or findings docs (in the style of
@@ -72,9 +72,9 @@ standing rule:
   That's an adjudication, Nasser's or a reviewing session's call — not a documentation task, even
   though it happens to be a Markdown edit.
 - **May not:** declare a milestone (any M-number) started, done, or closed in `AGENTS.md`,
-  `docs/SESSION_HANDOFF.md`, or `docs/SPECIFICATION.md`. Doc updates should *record* a decision or
+  `docs/process/SESSION_HANDOFF.md`, or `docs/SPECIFICATION.md`. Doc updates should *record* a decision or
   a verified code state that already exists, never *announce* one that hasn't happened yet.
-- **May not:** resolve any open spec question (the pattern `docs/GLM_ToDO_Overnight.md` already
+- **May not:** resolve any open spec question (the pattern `docs/process/GLM_ToDO_Overnight.md` already
   names for Q1/Q7/Q8/Q9/Q10) — evidence-gathering and write-up only, never the adjudication.
 
 ## 5. The `[verified:...]` discipline — non-negotiable
@@ -101,19 +101,19 @@ exactly the class of claim that's turned out wrong before in this repo's own his
   convention — but check first whether the content extends an existing doc (a new finding often
   belongs appended to an existing findings doc, not a new file).
 - Any new doc file gets added to `AGENTS.md` §8's repository-layout listing, and to
-  `docs/SESSION_HANDOFF.md` if it carries context a future session needs to inherit.
+  `docs/process/SESSION_HANDOFF.md` if it carries context a future session needs to inherit.
 
 ## 7. Session start/end protocol
 
 Same as any agent, per `AGENTS.md` §5/§7: `fsde_start_session` → `fsde_read_directives` →
 `fsde_get_todos` at session start (or the `fsde` CLI fallback); `fsde_end_session` +
-`fsde_log_work_event` at session end. **Always read `docs/SESSION_HANDOFF.md` first** — it is
+`fsde_log_work_event` at session end. **Always read `docs/process/SESSION_HANDOFF.md` first** — it is
 authoritative when FSDE is cold, per its own header.
 
 ## 8. If a documentation task seems to require a code change
 
 Stop before making it. Write the need into a findings-style doc, or into the active
-`docs/GLM_ToDO_Overnight.md`'s morning-report section, instead:
+`docs/process/GLM_ToDO_Overnight.md`'s morning-report section, instead:
 
 - **Doc says X, code does Y, and the code is right** → safe to fix the doc yourself (§4).
 - **Doc says X, code does Y, and you suspect the *code* is wrong** → that's a finding to report,
