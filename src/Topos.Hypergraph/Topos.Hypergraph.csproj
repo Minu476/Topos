@@ -33,7 +33,7 @@
          the same change because every `m.N` sorts below every already-published `mN`, so the
          minor bump is what actually clears the previously-published set. See docs/DECISIONS.md
          2026-08-03 "NUGET VERSION SCHEME CORRECTED". -->
-    <Version>0.2.0-m.11</Version>
+    <Version>0.2.0-m.13</Version>
     <!-- License: SPDX expression. NuGet.org renders this; no file-bundling needed. -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <!-- Source repo: lets consumers trace the package back to this code. -->

@@ -323,3 +323,16 @@ What this means concretely:
   shell-based tools. Full writeup in `docs/GDS_ORACLE_SETUP.md`. Not a Topos-specific concern,
   but relevant if you're ever debugging why a Neo4j connection on this machine behaves
   differently than a doc describes.
+
+## Milestone status (refreshed 2026-09-19 — supersedes any older text above)
+
+- **M11 phase 2: SHIPPED** (commit `7011078`) — it is NOT "not scheduled"; older handoff text
+  saying so is stale.
+- **M12: SHIPPED.** **M13 change tracking: SHIPPED** (`CurrentRevision`, `ChangesSince`,
+  `RevisionCache<T>`; kernel now `0.2.0-m.13`).
+- Snapshot reload restores vertices, incidences, AND properties via `Restore*` bypasses — a
+  reloaded kernel genuinely starts at revision 0 with an empty log; pre-reload cursors get the
+  overflow signal (see `HypergraphSnapshotTests.Load_RestartsAtRevision0_AndStaleCursorOverflows`).
+- Pending follow-ups from the Kimi review (`docs/CODE_REVIEW_KIMI_2026-09-19.md` §Low):
+  MCP `changes_since` structured error, `semantic_recall` → `RevisionCache<VectorIndex>`,
+  `ReconstructPath` dedupe.

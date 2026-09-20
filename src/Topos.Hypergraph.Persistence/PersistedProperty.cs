@@ -37,7 +37,7 @@ internal sealed class PersistedPropertyColumn<T>(
         {
             var handle = new Handle(reader.ReadUInt32(), reader.ReadUInt32());
             var value = read(reader);
-            kernel.SetProperty(key, handle, value);
+            kernel.RestoreProperty(key, handle, value);
         }
     }
 }

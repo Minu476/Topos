@@ -178,4 +178,43 @@ public class HypergraphSnapshotTests
         var ex = Assert.Throws<InvalidDataException>(() => HypergraphSnapshot.Load(stream)); // no columns passed
         Assert.Contains("confidence", ex.Message);
     }
+/// <summary>
+/// M13 contract (Kimi review 2026-09-19, finding 1): a reloaded kernel starts at revision 0
+/// with an empty log, and a consumer holding a pre-reload cursor gets the overflow signal —
+/// never a silently-empty change list.
+/// </summary>
+[Fact]
+public void Load_RestartsAtRevision0_AndStaleCursorOverflows()
+{
+    var kernel = new HypergraphKernel();
+    kernel.EnableChangeLog();
+    var edge = kernel.CreateVertex(VertexRoles.Edge);
+    var m1 = kernel.CreateVertex();
+    var m2 = kernel.CreateVertex();
+    kernel.AddIncidence(edge, m1, 0, 0);
+    kernel.AddIncidence(edge, m2, 0, 1);
+    long preReloadCursor = kernel.CurrentRevision;
+    Assert.Equal(5, preReloadCursor); // 3 vertex creations + 2 incidences
+
+    using var stream = new MemoryStream();
+    HypergraphSnapshot.Save(kernel, stream);
+    stream.Position = 0;
+    var reloaded = HypergraphSnapshot.Load(stream);
+
+    // The contract: reload is a new baseline — no phantom revision, no phantom changes.
+    Assert.Equal(3, reloaded.CountVertices()); // edge + two members
+    Assert.Equal(0, reloaded.CurrentRevision);
+
+    reloaded.EnableChangeLog();
+    var stale = reloaded.ChangesSince(preReloadCursor, out var staleOverflow);
+    Assert.True(staleOverflow);  // pre-reload cursor must rescan, never read silently-empty
+    Assert.Empty(stale);
+
+    // Post-load mutations behave normally from the new baseline.
+    reloaded.CreateVertex();
+    Assert.Equal(1, reloaded.CurrentRevision);
+    var fresh = reloaded.ChangesSince(0, out var freshOverflow);
+    Assert.False(freshOverflow);
+    Assert.Single(fresh);
+}
 }

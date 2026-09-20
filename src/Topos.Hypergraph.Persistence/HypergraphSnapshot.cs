@@ -119,7 +119,7 @@ public static class HypergraphSnapshot
             var member = new Handle(reader.ReadUInt32(), reader.ReadUInt32());
             byte role = reader.ReadByte();
             int ordinal = reader.ReadInt32();
-            kernel.AddIncidence(source, member, role, ordinal);
+            kernel.RestoreIncidence(source, member, role, ordinal);
         }
 
         int columnCount = reader.ReadInt32();

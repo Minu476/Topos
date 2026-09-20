@@ -92,6 +92,31 @@ public sealed class HypergraphKernel : IHypergraphQuery
     public void RestoreVertex(Handle handle, VertexRoles roles, VertexStatus status) =>
         _vertices.Set(handle, new Vertex(handle, roles, status));
 
+    /// <summary>
+    /// Inserts an incidence at replay time — the incidence counterpart to
+    /// <see cref="RestoreVertex"/>, for snapshot reload only (spec §6 M4 + §6.6 M13).
+    /// <b>Does not move <see cref="CurrentRevision"/> and records nothing in the change log</b>
+    /// (same rationale: a reload is a new baseline, not a change). Replay via
+    /// <see cref="AddIncidence"/> would advance the revision once per incidence, leaving a
+    /// reloaded kernel claiming <c>CurrentRevision == incidenceCount</c> with an empty log —
+    /// exactly the silent staleness the M13 overflow contract exists to prevent.
+    /// </summary>
+    public Incidence RestoreIncidence(Handle source, Handle member, byte role, int ordinal)
+    {
+        var incidence = new Incidence(source, member, role, ordinal);
+        _bySource.Append(source, incidence);
+        _byMember.Append(member, incidence);
+        return incidence;
+    }
+
+    /// <summary>
+    /// Sets a property without moving <see cref="CurrentRevision"/> and without recording in the
+    /// change log — the property counterpart to <see cref="RestoreVertex"/>, for snapshot reload
+    /// only (property columns in <c>HypergraphSnapshot.Load</c>).
+    /// </summary>
+    public void RestoreProperty<T>(PropertyKey<T> key, Handle handle, T value) =>
+        GetPool<T>(key).Set(handle, value);
+
     // ── IHypergraphQuery primitives ─────────────────────────────────────────
 
     public int CountVertices() => _vertices.Count;
@@ -284,6 +309,14 @@ public sealed class HypergraphKernel : IHypergraphQuery
         var log = _changeLog ?? throw new InvalidOperationException(
             "The change log is off. Call EnableChangeLog() before ChangesSince() — CurrentRevision " +
             "works without it, but retaining what changed is opt-in (docs/LIVING_GRAPH_SPEC.md §6.1).");
+        // A cursor AHEAD of CurrentRevision means the consumer's reality is gone — a pre-reload
+        // cursor against a kernel that just restarted at revision 0 (M13 contract). Signal
+        // overflow so it rescans instead of silently reading an empty change list.
+        if (revision > CurrentRevision)
+        {
+            overflowed = true;
+            return [];
+        }
         return log.Since(revision, out overflowed);
     }
 
